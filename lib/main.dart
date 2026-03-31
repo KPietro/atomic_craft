@@ -250,6 +250,21 @@ final List<Map<String, dynamic>> listaElementos = [
   {"nome": "Oganésson", "simbolo": "Og", "numero": 118, "peso": 294.0},
 ];
 
+// --- COMPONENTE INVISÍVEL DA LIXEIRA ---
+class LixeiraComponent extends PositionComponent {
+  LixeiraComponent()
+    : super(
+        position: Vector2(
+          15,
+          15,
+        ), // Mesma posição do widget (top: 15, left: 15)
+        size: Vector2(
+          60,
+          60,
+        ), // Um pouco maior que o ícone para facilitar acertar
+      );
+}
+
 // --- MOTOR DO JOGO ---
 class AtomCGame extends FlameGame with HasCollisionDetection {
   bool isDark = false;
@@ -260,6 +275,11 @@ class AtomCGame extends FlameGame with HasCollisionDetection {
   @override
   Color backgroundColor() => Colors.transparent;
 
+  @override
+  Future<void> onLoad() async {
+    add(LixeiraComponent()); // Adiciona a área de exclusão
+  }
+
   void spawnElement(int index) {
     final atomo = AtomoComponent(listaElementos[index]);
     atomo.position = size / 2;
@@ -267,6 +287,19 @@ class AtomCGame extends FlameGame with HasCollisionDetection {
   }
 
   void verificarFusao(AtomoComponent movido) {
+    // 1. PRIMEIRO CHECA A LIXEIRA
+    final lixeiras = children.query<LixeiraComponent>();
+    if (lixeiras.isNotEmpty) {
+      final rectMovido = movido.toAbsoluteRect();
+      final rectLixeira = lixeiras.first.toAbsoluteRect();
+
+      if (rectMovido.overlaps(rectLixeira)) {
+        remove(movido); // Destrói o átomo
+        return; // Sai da função
+      }
+    }
+
+    // 2. DEPOIS CHECA A FUSÃO COM OUTROS ÁTOMOS
     final outros = children.query<AtomoComponent>();
     for (var outro in outros) {
       if (outro == movido) continue;
