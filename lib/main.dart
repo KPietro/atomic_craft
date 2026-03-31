@@ -689,27 +689,36 @@ class _HomePageState extends State<_HomePage> {
                   width: 65,
                   height: 65,
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: Colors.black, width: 1.2),
+                    color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+                    border: Border.all(
+                      color: isDark ? Colors.white : Colors.black,
+                      width: 1.2,
+                    ),
                   ),
-                  child: const Column(
+                  child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
                         "H",
                         style: TextStyle(
-                          color: Colors.black,
+                          color: isDark ? Colors.white : Colors.black,
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       Text(
                         "Hidrogênio",
-                        style: TextStyle(color: Colors.black, fontSize: 8),
+                        style: TextStyle(
+                          color: isDark ? Colors.white : Colors.black,
+                          fontSize: 8,
+                        ),
                       ),
                       Text(
                         "1.008",
-                        style: TextStyle(color: Colors.black, fontSize: 10),
+                        style: TextStyle(
+                          color: isDark ? Colors.white : Colors.black,
+                          fontSize: 10,
+                        ),
                       ),
                     ],
                   ),
