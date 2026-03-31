@@ -1,22 +1,134 @@
+import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
+import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
-void main() {
-  runApp(const MyApp());
-}
+// --- 1. DICIONÁRIO DE MOLÉCULAS ---
+// Adicione as moléculas aqui usando o número atômico como chave
+final Map<int, String> principaisMoleculas = {
+  1: "H2O (Água)",
+  2: "He (Gás Hélio)",
+  3: "Li2CO3 (Carbonato de Lítio)",
+  4: "BeO (Óxido de Berílio)",
+  5: "H3BO3 (Ácido Bórico)",
+  6: "CO2 (Dióxido de Carbono)",
+  7: "N2 (Gás Nitrogênio)",
+  8: "O2 (Gás Oxigênio)",
+  9: "NaF (Fluoreto de Sódio)",
+  10: "Ne (Gás Neônio)",
+  11: "NaCl (Cloreto de Sódio / Sal)",
+  12: "MgO (Óxido de Magnésio)",
+  13: "Al2O3 (Óxido de Alumínio / Alumina)",
+  14: "SiO2 (Dióxido de Silício / Areia)",
+  15: "H3PO4 (Ácido Fosfórico)",
+  16: "H2SO4 (Ácido Sulfúrico)",
+  17: "HCl (Ácido Clorídrico)",
+  18: "Ar (Gás Argônio)",
+  19: "KCl (Cloreto de Potássio)",
+  20: "CaCO3 (Carbonato de Cálcio / Calcário)",
+  21: "Sc2O3 (Óxido de Escândio)",
+  22: "TiO2 (Dióxido de Titânio)",
+  23: "V2O5 (Pentóxido de Vanádio)",
+  24: "Cr2O3 (Óxido de Crômio)",
+  25: "MnO2 (Dióxido de Manganês)",
+  26: "Fe2O3 (Óxido de Ferro III / Ferrugem)",
+  27: "CoCl2 (Cloreto de Cobalto)",
+  28: "NiO (Óxido de Níquel)",
+  29: "CuSO4 (Sulfato de Cobre)",
+  30: "ZnO (Óxido de Zinco)",
+  31: "GaAs (Arsenieto de Gálio)",
+  32: "GeO2 (Dióxido de Germânio)",
+  33: "As2O3 (Trióxido de Arsênio)",
+  34: "H2Se (Seleneto de Hidrogênio)",
+  35: "NaBr (Brometo de Sódio)",
+  36: "Kr (Gás Criptônio)",
+  37: "RbCl (Cloreto de Rubídio)",
+  38: "SrCO3 (Carbonato de Estrôncio)",
+  39: "Y2O3 (Óxido de Ítrio)",
+  40: "ZrO2 (Dióxido de Zircônio)",
+  41: "Nb2O5 (Pentóxido de Nióbio)",
+  42: "MoS2 (Dissulfeto de Molibdênio)",
+  43: "NaTcO4 (Pertenetato de Sódio)",
+  44: "RuO4 (Tetróxido de Rutênio)",
+  45: "RhCl3 (Cloreto de Ródio)",
+  46: "PdCl2 (Cloreto de Paládio)",
+  47: "AgNO3 (Nitrato de Prata)",
+  48: "CdS (Sulfeto de Cádmio)",
+  49: "In2O3 (Óxido de Índio)",
+  50: "SnO2 (Dióxido de Estanho)",
+  51: "Sb2S3 (Trissulfeto de Antimônio)",
+  52: "CdTe (Telureto de Cádmio)",
+  53: "KI (Iodeto de Potássio)",
+  54: "Xe (Gás Xenônio)",
+  55: "CsCl (Cloreto de Césio)",
+  56: "BaSO4 (Sulfato de Bário)",
+  57: "La2O3 (Óxido de Lantânio)",
+  58: "CeO2 (Dióxido de Cério)",
+  59: "Pr2O3 (Óxido de Praseodímio)",
+  60: "Nd2O3 (Óxido de Neodímio)",
+  61: "Pm2O3 (Óxido de Promécio)",
+  62: "Sm2O3 (Óxido de Samário)",
+  63: "Eu2O3 (Óxido de Európio)",
+  64: "Gd2O3 (Óxido de Gadolínio)",
+  65: "Tb2O3 (Óxido de Térbio)",
+  66: "Dy2O3 (Óxido de Disprósio)",
+  67: "Ho2O3 (Óxido de Hólmio)",
+  68: "Er2O3 (Óxido de Érbio)",
+  69: "Tm2O3 (Óxido de Túlio)",
+  70: "Yb2O3 (Óxido de Itérbio)",
+  71: "Lu2O3 (Óxido de Lutécio)",
+  72: "HfO2 (Dióxido de Háfnio)",
+  73: "Ta2O5 (Pentóxido de Tântalo)",
+  74: "WO3 (Trióxido de Tungstênio)",
+  75: "KReO4 (Perrhenato de Potássio)",
+  76: "OsO4 (Tetróxido de Ósmio)",
+  77: "IrO2 (Dióxido de Irídio)",
+  78: "PtCl2 (Cloreto de Platina)",
+  79: "AuCl3 (Tricloreto de Ouro)",
+  80: "HgS (Sulfeto de Mercúrio / Cinábrio)",
+  81: "Tl2SO4 (Sulfato de Tálio)",
+  82: "PbO (Óxido de Chumbo)",
+  83: "Bi2O3 (Óxido de Bismuto)",
+  84: "PoO2 (Dióxido de Polônio)",
+  85: "HAt (Astateto de Hidrogênio)",
+  86: "Rn (Gás Radônio)",
+  87: "FrCl (Cloreto de Frâncio)",
+  88: "RaCl2 (Cloreto de Rádio)",
+  89: "Ac2O3 (Óxido de Actínio)",
+  90: "ThO2 (Dióxido de Tório)",
+  91: "Pa2O5 (Pentóxido de Protactínio)",
+  92: "UO2 (Dióxido de Urânio)",
+  93: "NpO2 (Dióxido de Netúnio)",
+  94: "PuO2 (Dióxido de Plutônio)",
+  95: "AmO2 (Dióxido de Amerício)",
+  96: "Cm2O3 (Óxido de Cúrio)",
+  97: "BkO2 (Dióxido de Berquélio)",
+  98: "Cf2O3 (Óxido de Califórnio)",
+  99: "Es2O3 (Óxido de Einstêinio)",
+  100: "Fm2O3 (Óxido de Férmio)",
+  101: "Md2O3 (Óxido de Mendelévio)",
+  102: "NoO (Óxido de Nobélio)",
+  103: "Lr2O3 (Óxido de Laurêncio)",
+  104: "RfCl4 (Cloreto de Rutherfórdio)",
+  105: "DbCl5 (Cloreto de Dúbnio)",
+  106: "SgO3 (Óxido de Seabórgio)",
+  107: "BhO3Cl (Oxicloreto de Bóhrio)",
+  108: "HsO4 (Tetróxido de Hássio)",
+  109: "Mt (Meitnério - Sintético)",
+  110: "Ds (Darmstádio - Sintético)",
+  111: "Rg (Roentgênio - Sintético)",
+  112: "Cn (Copernício - Sintético)",
+  113: "Nh (Nihônio - Sintético)",
+  114: "Fl (Fleróvio - Sintético)",
+  115: "Mc (Moscóvio - Sintético)",
+  116: "Lv (Livermório - Sintético)",
+  117: "Ts (Tenesso - Sintético)",
+  118: "Og (Oganessônio - Sintético)",
+};
 
-class MyApp extends StatefulWidget {
-  const MyApp({super.key});
-
-  @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  // 1. Variável de estado movida para dentro do Estado do MyApp
-  bool escu = false;
-  List<Map<String, dynamic>> elementos = [
+// --- 2. LISTA COMPLETA ---
+final List<Map<String, dynamic>> listaElementos = [
   {"nome": "Nulo", "simbolo": "0", "numero": 0, "peso": 0.0},
   {"nome": "Hidrogênio", "simbolo": "H", "numero": 1, "peso": 1.008},
   {"nome": "Hélio", "simbolo": "He", "numero": 2, "peso": 4.0026},
@@ -137,229 +249,339 @@ class _MyAppState extends State<MyApp> {
   {"nome": "Tennesso", "simbolo": "Ts", "numero": 117, "peso": 294.0},
   {"nome": "Oganésson", "simbolo": "Og", "numero": 118, "peso": 294.0},
 ];
-  void criarElemento(String nome, String simbolo, int numero, double peso) {
-    setState(() {
-      elementos.add({
-        "nome": nome,
-        "simbolo": simbolo,
-        "numero": numero,
-        "peso": peso,
-      });
-    });
+
+// --- MOTOR DO JOGO ---
+class AtomCGame extends FlameGame with HasCollisionDetection {
+  bool isDark = false;
+  final Function(int) onUnlock;
+
+  AtomCGame({required this.onUnlock});
+
+  @override
+  Color backgroundColor() => Colors.transparent;
+
+  void spawnElement(int index) {
+    final atomo = AtomoComponent(listaElementos[index]);
+    atomo.position = size / 2;
+    add(atomo);
   }
-  // 2. Função para alternar o tema
-  void tema() {
-    setState(() {
-      escu = !escu;
-    });
+
+  void verificarFusao(AtomoComponent movido) {
+    final outros = children.query<AtomoComponent>();
+    for (var outro in outros) {
+      if (outro == movido) continue;
+
+      if (movido.collidingWith(outro)) {
+        int soma = movido.dados['numero'] + outro.dados['numero'];
+        if (soma < listaElementos.length) {
+          final posFinal = outro.position.clone();
+          remove(movido);
+          remove(outro);
+          add(AtomoComponent(listaElementos[soma])..position = posFinal);
+          onUnlock(soma); // Avisa o app do novo desbloqueio
+          break;
+        }
+      }
+    }
   }
+}
+
+// --- COMPONENTE DO ÁTOMO ---
+class AtomoComponent extends PositionComponent
+    with DragCallbacks, HasGameRef<AtomCGame> {
+  final Map<String, dynamic> dados;
+  final double s = 100.0;
+
+  AtomoComponent(this.dados)
+    : super(size: Vector2.all(100.0), anchor: Anchor.center);
+
+  @override
+  Future<void> onLoad() async {
+    add(CircleHitbox(radius: s / 4, position: size / 2, anchor: Anchor.center));
+  }
+
+  @override
+  void render(Canvas canvas) {
+    final bool dark = gameRef.isDark;
+
+    final paintBg = Paint()
+      ..color = dark
+          ? const Color.fromARGB(255, 102, 102, 102)
+          : const Color.fromARGB(255, 255, 255, 255);
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.x, size.y), paintBg);
+
+    final paintBorder = Paint()
+      ..color = dark ? Colors.white : Colors.black
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.x, size.y), paintBorder);
+
+    final Color textColor = dark ? Colors.white : Colors.black;
+
+    TextPaint(
+      style: TextStyle(
+        color: textColor,
+        fontSize: 38,
+        fontWeight: FontWeight.bold,
+      ),
+    ).render(
+      canvas,
+      dados['simbolo'],
+      Vector2(size.x / 2, size.y * 0.38),
+      anchor: Anchor.center,
+    );
+
+    TextPaint(
+      style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 11),
+    ).render(
+      canvas,
+      dados['nome'],
+      Vector2(size.x / 2, size.y * 0.70),
+      anchor: Anchor.center,
+    );
+
+    TextPaint(style: TextStyle(color: textColor, fontSize: 13)).render(
+      canvas,
+      dados['peso'].toString(),
+      Vector2(size.x / 2, size.y * 0.86),
+      anchor: Anchor.center,
+    );
+  }
+
+  @override
+  void onDragUpdate(DragUpdateEvent event) => position += event.localDelta;
+
+  @override
+  void onDragEnd(DragEndEvent event) {
+    super.onDragEnd(event);
+    gameRef.verificarFusao(this);
+  }
+
+  bool collidingWith(AtomoComponent outro) {
+    return toAbsoluteRect().overlaps(outro.toAbsoluteRect());
+  }
+}
+
+// --- APP ---
+void main() => runApp(const MyApp());
+
+class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  bool escu = false;
+  void toggleTema() => setState(() => escu = !escu);
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Atom_C',
-      // 3. Define os dois temas e qual usar baseado na variável
       theme: ThemeData.light(),
       darkTheme: ThemeData.dark(),
       themeMode: escu ? ThemeMode.dark : ThemeMode.light,
-
-      // 4. Passamos a função de mudar tema para a HomePage
-      home: _HomePage(onThemeToggle: tema),
+      home: _HomePage(onThemeToggle: toggleTema),
       debugShowCheckedModeBanner: false,
     );
   }
 }
 
 class _HomePage extends StatefulWidget {
+  final VoidCallback onThemeToggle;
   const _HomePage({required this.onThemeToggle});
-  final VoidCallback onThemeToggle; // Adicione esta linha
   @override
-  _HomePageState createState() => _HomePageState();
+  State<_HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<_HomePage> {
   int _indiceAtual = 0;
   bool tutol = false;
+  late AtomCGame game;
+
+  // Guarda os desbloqueios em ordem
+  List<int> elementosDesbloqueados = [1];
+
   @override
-  Widget build(BuildContext context) {
-    final double alturaTela = MediaQuery.of(context).size.height;
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final List<Widget> _paginas = [
-      Row(
-        children: [
-          Expanded(
-            child: Container(
-              color: Colors.white.withOpacity(0.05),
-              child: Stack(
-                children: [
-                  Positioned(
-                    bottom: 10,
-                    left: 10,
-                    child: IconButton(
-                      icon: Icon(
-                        Icons.settings,
-                        color: isDark ? Colors.white : Colors.black,
-                        //border: Border.all(color: isDark ? Colors.white : Colors.black, width: 1),
-                        size: 30,
-                      ),
-                      onPressed: () async {
-                        final int? selectedValue = await showMenu<int>(
-                          context: context,
-                          position: const RelativeRect.fromLTRB(0, 400, 0, 0),
-                          color: isDark
-                              ? const Color.fromARGB(255, 30, 19, 37)
-                              : const Color.fromARGB(255, 230, 255, 231),
+  void initState() {
+    super.initState();
+    game = AtomCGame(
+      onUnlock: (novoNumero) {
+        if (!elementosDesbloqueados.contains(novoNumero)) {
+          setState(() {
+            elementosDesbloqueados.add(novoNumero);
+          });
+        }
+      },
+    );
+  }
 
-                          items: [
-                            const PopupMenuItem(
-                              value: 1,
-                              child: Text("Tutorial"),
-                            ),
-                            const PopupMenuItem(
-                              value: 2,
-                              child: Text("Modo escuro"),
-                            ),
-                            const PopupMenuItem(value: 3, child: Text("Sair")),
-                          ],
-                        );
+  // --- FUNÇÃO AUXILIAR PARA A TABELA PERIÓDICA ---
+  // Calcula a posição (coluna e linha) baseada no número atômico
+  List<int> _obterPosicaoTabela(int n) {
+    int col = 0;
+    int row = 0;
+    if (n == 1) {
+      col = 0;
+      row = 0;
+    } else if (n == 2) {
+      col = 17;
+      row = 0;
+    } else if (n >= 3 && n <= 4) {
+      col = n - 3;
+      row = 1;
+    } else if (n >= 5 && n <= 10) {
+      col = n + 7;
+      row = 1;
+    } else if (n >= 11 && n <= 12) {
+      col = n - 11;
+      row = 2;
+    } else if (n >= 13 && n <= 18) {
+      col = n - 3;
+      row = 2;
+    } else if (n >= 19 && n <= 36) {
+      col = n - 19;
+      row = 3;
+    } else if (n >= 37 && n <= 54) {
+      col = n - 37;
+      row = 4;
+    } else if (n >= 55 && n <= 56) {
+      col = n - 55;
+      row = 5;
+    } else if (n >= 57 && n <= 71) {
+      col = n - 54;
+      row = 7;
+    } // Lantanídeos
+    else if (n >= 72 && n <= 86) {
+      col = n - 69;
+      row = 5;
+    } else if (n >= 87 && n <= 88) {
+      col = n - 87;
+      row = 6;
+    } else if (n >= 89 && n <= 103) {
+      col = n - 86;
+      row = 8;
+    } // Actinídeos
+    else if (n >= 104 && n <= 118) {
+      col = n - 101;
+      row = 6;
+    }
+    return [col, row];
+  }
 
-                        // Verifica se o usuário não fechou o menu clicando fora (nulo)
-                        if (selectedValue != null) {
-                          setState(() {
-                            // Executa a lógica baseada no valor
-                            switch (selectedValue) {
-                              case 1:
-                                setState(() {
-                                  tutol = !tutol;
-                                });
-                                break;
-                              case 2:
-                                widget.onThemeToggle();
-                                break;
-                              case 3:
-                                break;
-                            }
-                          });
-                        }
-                      },
-                    ),
-                  ),
-                  Positioned(
-                    top: 10,
-                    left: 10,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment
-                          .start, // Alinha o texto à esquerda, junto com o botão
-                      children: [
-                        // 1. O SEU BOTÃO (Lixeira)
-                        Container(
-                          padding: const EdgeInsets.all(5),
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: Colors.red.withOpacity(0.5),
-                            ),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.delete,
-                            color: Colors.redAccent,
-                            size: 30,
-                          ),
-                        ),
+  // --- WIDGET DA ENCICLOPÉDIA ---
+  Widget _buildEnciclopedia(bool isDark) {
+    return ListView.builder(
+      itemCount: elementosDesbloqueados.length,
+      itemBuilder: (context, index) {
+        int numElemento = elementosDesbloqueados[index];
+        var elemento = listaElementos[numElemento];
+        String molecula = principaisMoleculas[numElemento] ?? "Desconhecida";
 
-                        // 2. O TUTORIAL (Só aparece se tutol for true)
-                        if (tutol)
-                          Container(
-                            margin: const EdgeInsets.only(
-                              top: 10,
-                            ), // Dá um espaço entre o botão e o texto
-                            padding: const EdgeInsets.all(15),
-                            width:
-                                280, // Define uma largura para o texto não atravessar a tela
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? Colors.black.withOpacity(0.9)
-                                  : Colors.white.withOpacity(0.9),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              "• Para fundir elementos arraste os para cima de outro\n"
-                              "• somente o hidrogênio tem estoque infinito\n"
-                              "• os outros elementos podem ser guardados na gaveta acima do hidrogênio\n"
-                              "• os elementos ja desbloqueados aparecerão em baixo do hidrogênio",
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: isDark
-                                    ? Colors.white
-                                    : Colors
-                                          .black, // Inverte a cor para dar leitura
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
+        return Card(
+          color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: isDark ? Colors.grey[700] : Colors.blueGrey,
+              child: Text(
+                elemento['simbolo'],
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
+            title: Text("${elemento['numero']} - ${elemento['nome']}"),
+            subtitle: Text("Molécula: $molecula\nPeso: ${elemento['peso']}"),
           ),
-          Container(
-            width: 80,
-            height: alturaTela,
-            decoration: BoxDecoration(
-              color: isDark
-                  ? const Color.fromARGB(255, 30, 19, 37)
-                  : const Color.fromARGB(255, 230, 255, 231),
-              border: Border(left: BorderSide(color: Colors.white10)),
-            ),
-            child: Column(
-              children: [
-                const SizedBox(height: 50),
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? const Color.fromARGB(255, 0, 0, 0)
-                        : const Color.fromARGB(255, 255, 255, 255),
-                    border: Border.all(
-                      color: isDark ? Colors.white : Colors.black,
-                      width: 1,
+        );
+      },
+    );
+  }
+
+  // --- WIDGET DO STATUS (Tabela Periódica Geométrica) ---
+  Widget _buildStatus() {
+    // Definimos o tamanho de cada "quadradinho" do elemento
+    const double tamanhoCelula = 45.0;
+    const double espacamento = 2.0;
+
+    return InteractiveViewer(
+      // Permite dar zoom e arrastar a tabela pela tela
+      constrained: false,
+      boundaryMargin: const EdgeInsets.all(20),
+      minScale: 0.5,
+      maxScale: 2.0,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        width: (18 * (tamanhoCelula + espacamento)) + 32, // 18 colunas
+        height:
+            (9 * (tamanhoCelula + espacamento)) +
+            32, // 9 linhas (7 principais + 2 separadas)
+        child: Stack(
+          children: List.generate(listaElementos.length - 1, (index) {
+            var elemento = listaElementos[index + 1];
+            int numero = elemento['numero'];
+            bool desbloqueado = elementosDesbloqueados.contains(numero);
+
+            List<int> pos = _obterPosicaoTabela(numero);
+            double leftPos = pos[0] * (tamanhoCelula + espacamento);
+            // Adiciona um espaço extra (margin) antes da linha 7 para separar lantanídeos/actinídeos
+            double topPos =
+                pos[1] * (tamanhoCelula + espacamento) +
+                (pos[1] >= 7 ? 15.0 : 0.0);
+
+            return Positioned(
+              left: leftPos,
+              top: topPos,
+              width: tamanhoCelula,
+              height: tamanhoCelula,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: desbloqueado
+                      ? Colors.green.withOpacity(0.8)
+                      : Colors.grey.withOpacity(0.15),
+                  border: Border.all(
+                    color: desbloqueado
+                        ? Colors.green[900]!
+                        : Colors.grey.withOpacity(0.3),
+                  ),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Center(
+                  child: Text(
+                    elemento['simbolo'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: desbloqueado ? Colors.white : Colors.black12,
                     ),
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        "H",
-                        style: TextStyle(
-                          fontSize: 21,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text("Hidrigênio", style: TextStyle(fontSize: 7)),
-                      Text("1.008", style: TextStyle(fontSize: 12)),
-                    ],
-                  ),
                 ),
-              ],
-            ),
-          ),
-        ],
+              ),
+            );
+          }),
+        ),
       ),
-      const Center(child: Text("Enciclopédia Completa")),
-      const Center(child: Text("Status do Progresso")),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    game.isDark = isDark;
+
+    final List<Widget> paginas = [
+      _buildPaginaCraft(isDark, context),
+      _buildEnciclopedia(isDark),
+      _buildStatus(),
     ];
 
     return Scaffold(
-      body: SafeArea(child: Stack(children: [_paginas[_indiceAtual]])),
+      body: SafeArea(child: paginas[_indiceAtual]),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _indiceAtual,
-        onTap: (indice) {
-          setState(() {
-            _indiceAtual = indice;
-          });
-        },
+        onTap: (i) => setState(() => _indiceAtual = i),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.science), label: "Craft"),
           BottomNavigationBarItem(
@@ -372,6 +594,131 @@ class _HomePageState extends State<_HomePage> {
           ),
         ],
       ),
+    );
+  }
+
+  // --- WIDGET DO CRAFT ---
+  Widget _buildPaginaCraft(bool isDark, BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Stack(
+            children: [
+              GameWidget(game: game),
+              Positioned(
+                bottom: 10,
+                left: 10,
+                child: IconButton(
+                  icon: Icon(
+                    Icons.settings,
+                    color: isDark ? Colors.white : Colors.black,
+                    size: 32,
+                  ),
+                  onPressed: () async {
+                    final res = await showMenu<int>(
+                      context: context,
+                      position: const RelativeRect.fromLTRB(0, 680, 0, 0),
+                      color: isDark
+                          ? const Color(0xFF1E1325)
+                          : const Color(0xFFE6FFE7),
+                      items: const [
+                        PopupMenuItem(value: 1, child: Text("Tutorial")),
+                        PopupMenuItem(value: 2, child: Text("Modo Escuro")),
+                      ],
+                    );
+                    if (res == 1) setState(() => tutol = !tutol);
+                    if (res == 2) widget.onThemeToggle();
+                  },
+                ),
+              ),
+              Positioned(
+                top: 15,
+                left: 15,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.red.withOpacity(0.5)),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.delete,
+                        color: Colors.redAccent,
+                        size: 28,
+                      ),
+                    ),
+                    if (tutol)
+                      Container(
+                        margin: const EdgeInsets.only(top: 390),
+                        padding: const EdgeInsets.all(12),
+                        width: 260,
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.black87
+                              : Colors.white.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: Colors.grey.withOpacity(0.3),
+                          ),
+                        ),
+                        child: const Text(
+                          "• Para fundir elementos arraste os para cima de outro\n• somente o hidrogênio tem estoque infinito\n• os outros elementos podem ser guardados na gaveta acima do hidrogênio\n• os elementos ja desbloqueados aparecerão em baixo do hidrogênio meio transparentes e em ordem de desbloqueio",
+                          style: TextStyle(fontSize: 13),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          width: 85,
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E1325) : const Color(0xFFE6FFE7),
+            border: const Border(left: BorderSide(color: Colors.black12)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 50),
+              GestureDetector(
+                onTap: () => game.spawnElement(1),
+                child: Container(
+                  width: 65,
+                  height: 65,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: Colors.black, width: 1.2),
+                  ),
+                  child: const Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        "H",
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        "Hidrogênio",
+                        style: TextStyle(color: Colors.black, fontSize: 8),
+                      ),
+                      Text(
+                        "1.008",
+                        style: TextStyle(color: Colors.black, fontSize: 10),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
