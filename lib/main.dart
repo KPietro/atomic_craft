@@ -2119,12 +2119,108 @@ class _HomePageState extends State<_HomePage> {
 
   // --- WIDGET DO CRAFT ---
   Widget _buildPaginaCraft(bool isDark, BuildContext context) {
+    void mostrarTutorialDialog(BuildContext context, bool isDark) {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(
+                20,
+              ), // Cantos bem arredondados como na foto
+            ),
+            backgroundColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize:
+                    MainAxisSize.min, // Faz a caixa abraçar o conteúdo
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Cabeçalho com Ícone e Título
+                  Row(
+                    children: [
+                      Container(
+                        width: 45,
+                        height: 45,
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: isDark ? Colors.white : Colors.black,
+                            width: 1.5,
+                          ),
+                        ),
+                        alignment: Alignment.center,
+                        child: Icon(
+                          Icons.menu_book_rounded, // Ícone de livrinho
+                          color: isDark ? Colors.white : Colors.black,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Text(
+                        "Como Jogar",
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Divider(
+                    color: Colors.grey.withOpacity(0.3),
+                  ), // Linha sutil separando
+                  const SizedBox(height: 16),
+
+                  // Texto do Tutorial
+                  Text(
+                    "• Para fundir elementos arraste os para cima de outro.\n\n"
+                    "• Somente o hidrogênio tem estoque infinito.\n\n"
+                    "• Os outros elementos podem ser guardados na gaveta acima do hidrogênio.\n\n"
+                    "• Os elementos já desbloqueados aparecerão embaixo do hidrogênio, meio transparentes e em ordem de desbloqueio.",
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: isDark ? Colors.white70 : Colors.black87,
+                      height: 1.3,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Botão Fechar
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () => Navigator.of(
+                        context,
+                      ).pop(), // Isso fecha a janelinha!
+                      child: const Text(
+                        "Fechar",
+                        style: TextStyle(
+                          color: Colors
+                              .blueAccent, // Aquele azul clássico da sua foto
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    }
+
     return Row(
       children: [
         Expanded(
           child: Stack(
             children: [
               GameWidget(game: game),
+
+              // Botão de engrenagem
               Positioned(
                 bottom: 10,
                 left: 10,
@@ -2146,54 +2242,35 @@ class _HomePageState extends State<_HomePage> {
                         PopupMenuItem(value: 2, child: Text("Modo Escuro")),
                       ],
                     );
-                    if (res == 1) setState(() => tutol = !tutol);
+                    // Aqui chamamos a janelinha bonita em vez de mudar o estado!
+                    if (res == 1) mostrarTutorialDialog(context, isDark);
                     if (res == 2) widget.onThemeToggle();
                   },
                 ),
               ),
+
+              // Lixeira
               Positioned(
                 top: 15,
                 left: 15,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.red.withOpacity(0.5)),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.delete,
-                        color: Colors.redAccent,
-                        size: 28,
-                      ),
-                    ),
-                    if (tutol)
-                      Container(
-                        margin: const EdgeInsets.only(top: 390),
-                        padding: const EdgeInsets.all(12),
-                        width: 260,
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.black87
-                              : Colors.white.withOpacity(0.9),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: Colors.grey.withOpacity(0.3),
-                          ),
-                        ),
-                        child: const Text(
-                          "• Para fundir elementos arraste os para cima de outro\n• somente o hidrogênio tem estoque infinito\n• os outros elementos podem ser guardados na gaveta acima do hidrogênio\n• os elementos ja desbloqueados aparecerão em baixo do hidrogênio meio transparentes e em ordem de desbloqueio",
-                          style: TextStyle(fontSize: 13),
-                        ),
-                      ),
-                  ],
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.red.withOpacity(0.5)),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.delete,
+                    color: Colors.redAccent,
+                    size: 28,
+                  ),
                 ),
               ),
             ],
           ),
         ),
+
+        // Barra lateral do Hidrogênio (intacta)
         Container(
           width: 85,
           decoration: BoxDecoration(
@@ -2215,10 +2292,8 @@ class _HomePageState extends State<_HomePage> {
                       width: 1.2,
                     ),
                   ),
-                  // O Stack substitui a Column principal aqui
                   child: Stack(
                     children: [
-                      // O "1" fica isolado no canto
                       Positioned(
                         top: 2,
                         left: 4,
@@ -2231,12 +2306,10 @@ class _HomePageState extends State<_HomePage> {
                           ),
                         ),
                       ),
-                      // O resto do texto fica perfeitamente centralizado
                       Align(
                         alignment: Alignment.center,
                         child: Column(
-                          mainAxisSize: MainAxisSize
-                              .min, // Impede a coluna de expandir e dar overflow
+                          mainAxisSize: MainAxisSize.min,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
@@ -2245,6 +2318,7 @@ class _HomePageState extends State<_HomePage> {
                                 color: isDark ? Colors.white : Colors.black,
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold,
+                                height: 1.0,
                               ),
                             ),
                             Text(
@@ -2252,6 +2326,7 @@ class _HomePageState extends State<_HomePage> {
                               style: TextStyle(
                                 color: isDark ? Colors.white : Colors.black,
                                 fontSize: 8,
+                                height: 1.0,
                               ),
                             ),
                             Text(
@@ -2259,6 +2334,7 @@ class _HomePageState extends State<_HomePage> {
                               style: TextStyle(
                                 color: isDark ? Colors.white : Colors.black,
                                 fontSize: 10,
+                                height: 1.0,
                               ),
                             ),
                           ],
