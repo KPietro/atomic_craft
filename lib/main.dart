@@ -1622,6 +1622,23 @@ class AtomoComponent extends PositionComponent
 
     final Color textColor = dark ? Colors.white : Colors.black;
 
+    // NOVO: Número atômico no canto superior esquerdo
+    // Obs: Confirme se a chave no seu Map é 'numero' mesmo. Se for 'id' ou outra coisa, é só trocar aqui!
+    TextPaint(
+      style: TextStyle(
+        color: textColor,
+        fontSize:
+            15, // Um pouco maior para manter a proporção da caixa de 100x100
+        fontWeight: FontWeight.bold,
+      ),
+    ).render(
+      canvas,
+      "${dados['numero'] ?? ''}",
+      Vector2(6, 4), // Coordenada X, Y para simular o "left: 4, top: 2"
+      anchor: Anchor.topLeft,
+    );
+
+    // Textos centrais mantidos intactos
     TextPaint(
       style: TextStyle(
         color: textColor,
@@ -1646,7 +1663,7 @@ class AtomoComponent extends PositionComponent
 
     TextPaint(style: TextStyle(color: textColor, fontSize: 13)).render(
       canvas,
-      dados['peso'].toString(),
+      "${dados['peso']}u",
       Vector2(size.x / 2, size.y * 0.86),
       anchor: Anchor.center,
     );
@@ -1746,7 +1763,7 @@ class _HomePageState extends State<_HomePage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  "Peso Atômico: ${elemento['peso']}",
+                  "Peso Atômico: ${elemento['peso']}u",
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const Divider(),
@@ -1932,7 +1949,7 @@ class _HomePageState extends State<_HomePage> {
               ),
             ),
             title: Text("${elemento['numero']} - ${elemento['nome']}"),
-            subtitle: Text("Molécula: $molecula\nPeso: ${elemento['peso']}"),
+            subtitle: Text("Molécula: $molecula\nPeso: ${elemento['peso']}u"),
             trailing: const Icon(
               Icons.info_outline,
             ), // Ícone pra indicar que dá pra clicar
@@ -1953,13 +1970,13 @@ class _HomePageState extends State<_HomePage> {
       boundaryMargin: const EdgeInsets.all(
         60,
       ), // Margem maior para o usuário poder rolar livremente
-      minScale: 0.00001, // Zoom-out ideal para ver a tabela toda
-      maxScale: 1.5, // Limite de zoom-in (não tão exagerado)
+      //minScale: 0.00001, // Zoom-out ideal para ver a tabela toda
+      //maxScale: 1.5, // Limite de zoom-in (não tão exagerado)
       child: Container(
         padding: const EdgeInsets.all(16),
-        width: (18 * (tamanhoCelula + espacamento)) + 32,
+        width: (18 * (tamanhoCelula + espacamento)) + 112,
         // Aumentei o height para garantir que as últimas linhas não sejam cortadas
-        height: (10 * (tamanhoCelula + espacamento)) + 60,
+        height: (10 * (tamanhoCelula + espacamento)) + 250,
         child: Stack(
           children: List.generate(listaElementos.length - 1, (index) {
             var elemento = listaElementos[index + 1];
@@ -2048,7 +2065,7 @@ class _HomePageState extends State<_HomePage> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               Text(
-                                elemento['peso'].toString(),
+                                "${elemento['peso']}u",
                                 style: TextStyle(
                                   color: isDark ? Colors.white : Colors.black,
                                   fontSize: 8,
@@ -2198,29 +2215,53 @@ class _HomePageState extends State<_HomePage> {
                       width: 1.2,
                     ),
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  // O Stack substitui a Column principal aqui
+                  child: Stack(
                     children: [
-                      Text(
-                        "H",
-                        style: TextStyle(
-                          color: isDark ? Colors.white : Colors.black,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
+                      // O "1" fica isolado no canto
+                      Positioned(
+                        top: 2,
+                        left: 4,
+                        child: Text(
+                          "1",
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : Colors.black,
+                          ),
                         ),
                       ),
-                      Text(
-                        "Hidrogênio",
-                        style: TextStyle(
-                          color: isDark ? Colors.white : Colors.black,
-                          fontSize: 8,
-                        ),
-                      ),
-                      Text(
-                        "1.008",
-                        style: TextStyle(
-                          color: isDark ? Colors.white : Colors.black,
-                          fontSize: 10,
+                      // O resto do texto fica perfeitamente centralizado
+                      Align(
+                        alignment: Alignment.center,
+                        child: Column(
+                          mainAxisSize: MainAxisSize
+                              .min, // Impede a coluna de expandir e dar overflow
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              "H",
+                              style: TextStyle(
+                                color: isDark ? Colors.white : Colors.black,
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              "Hidrogênio",
+                              style: TextStyle(
+                                color: isDark ? Colors.white : Colors.black,
+                                fontSize: 8,
+                              ),
+                            ),
+                            Text(
+                              "1.008u",
+                              style: TextStyle(
+                                color: isDark ? Colors.white : Colors.black,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
