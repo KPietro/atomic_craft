@@ -19,8 +19,10 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-assets:
-   - assets/logo.png
+  assets:
+     - assets/logo.png
+     - assets/data/elementos.json
+     - assets/data/moleculas.json
    
 flutter_icons:
   android: true
