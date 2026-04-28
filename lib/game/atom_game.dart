@@ -1,8 +1,8 @@
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
-import '../data/elementos_data.dart';
 import 'components/atomo_component.dart';
 import 'components/lixeira_component.dart';
+import '../data/elementos_data.dart'; // Onde estão suas variáveis listaElementos e principaisMoleculas
 
 // --- MOTOR DO JOGO ---
 class AtomCGame extends FlameGame with HasCollisionDetection {

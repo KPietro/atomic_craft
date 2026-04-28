@@ -1,21 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flame/game.dart';
-import '../data/elementos_data.dart';
 import '../game/atom_game.dart';
+import '../data/elementos_data.dart';
 
-// Retirei o _ do nome para ele poder ser importado lá no main.dart
 class HomePage extends StatefulWidget {
   final VoidCallback onThemeToggle;
   const HomePage({super.key, required this.onThemeToggle});
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<HomePage> createState() => HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
-  int _indiceAtual = 0;
+class HomePageState extends State<HomePage> {
+  int indiceAtual = 0;
   bool tutol = false;
   late AtomCGame game;
-
   // --- FUNÇÃO PARA MOSTRAR DETALHES DO ELEMENTO ---
   void _mostrarDetalhesElemento(Map<String, dynamic> elemento, bool isDark) {
     showDialog(
@@ -124,6 +122,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // --- FUNÇÃO AUXILIAR PARA A TABELA PERIÓDICA ---
   // --- FUNÇÃO AUXILIAR PARA A TABELA PERIÓDICA ---
   List<int> _obterPosicaoTabela(int n) {
     int col = 0;
@@ -266,9 +265,12 @@ class _HomePageState extends State<HomePage> {
       boundaryMargin: const EdgeInsets.all(
         60,
       ), // Margem maior para o usuário poder rolar livremente
+      //minScale: 0.00001, // Zoom-out 
+      //maxScale: 1.5, // Limite de zoom-in
       child: Container(
         padding: const EdgeInsets.all(16),
         width: (18 * (tamanhoCelula + espacamento)) + 112,
+        // Aumentei o height para garantir que as últimas linhas não sejam cortadas
         height: (10 * (tamanhoCelula + espacamento)) + 250,
         child: Stack(
           children: List.generate(listaElementos.length - 1, (index) {
@@ -391,10 +393,10 @@ class _HomePageState extends State<HomePage> {
     ];
 
     return Scaffold(
-      body: SafeArea(child: paginas[_indiceAtual]),
+      body: SafeArea(child: paginas[indiceAtual]),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _indiceAtual,
-        onTap: (i) => setState(() => _indiceAtual = i),
+        currentIndex: indiceAtual,
+        onTap: (i) => setState(() => indiceAtual = i),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.science), label: "Craft"),
           BottomNavigationBarItem(
@@ -470,8 +472,8 @@ class _HomePageState extends State<HomePage> {
                   Text(
                     "• Para fundir elementos arraste os para cima de outro.\n\n"
                     "• Somente o hidrogênio tem estoque infinito.\n\n"
-                    "• Os outros elementos podem ser guardados na gaveta acima do hidrogênio.\n\n"
-                    "• Os elementos já desbloqueados aparecerão embaixo do hidrogênio, meio transparentes e em ordem de desbloqueio.",
+                    "• Os elemntos desbloqueados poderão ser vistos nas abas Enciclopedia e Status la tera mais datalhes de cada elemento.\n\n"
+                    "• Na aba enciclopédia Haverá a opção de ir para a segunda etapa do jogo complete a tabela periódica e encontre a.",
                     style: TextStyle(
                       fontSize: 15,
                       color: isDark ? Colors.white70 : Colors.black87,
@@ -602,7 +604,6 @@ class _HomePageState extends State<HomePage> {
                       Align(
                         alignment: Alignment.center,
                         child: Column(
-                          mainAxisSize: MainAxisSize.min,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
@@ -611,7 +612,6 @@ class _HomePageState extends State<HomePage> {
                                 color: isDark ? Colors.white : Colors.black,
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold,
-                                height: 1.0,
                               ),
                             ),
                             Text(
@@ -619,7 +619,6 @@ class _HomePageState extends State<HomePage> {
                               style: TextStyle(
                                 color: isDark ? Colors.white : Colors.black,
                                 fontSize: 8,
-                                height: 1.0,
                               ),
                             ),
                             Text(
@@ -627,7 +626,6 @@ class _HomePageState extends State<HomePage> {
                               style: TextStyle(
                                 color: isDark ? Colors.white : Colors.black,
                                 fontSize: 10,
-                                height: 1.0,
                               ),
                             ),
                           ],
