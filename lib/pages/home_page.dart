@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flame/game.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../game/atom_game.dart';
 import '../data/elementos_data.dart';
+import '../data/db_helper.dart'; // Importe o helper que acabamos de criar
 
 class HomePage extends StatefulWidget {
   final VoidCallback onThemeToggle;
@@ -106,20 +108,35 @@ class HomePageState extends State<HomePage> {
   }
 
   // Guarda os desbloqueios em ordem
-  List<int> elementosDesbloqueados = [1];
+  List<int> elementosDesbloqueados = [];
+  bool carregandoDb = true; // Para saber se os dados já vieram do banco
 
   @override
   void initState() {
     super.initState();
+    _carregarProgresso(); // Chama a função que lê o SQLite
+
     game = AtomCGame(
-      onUnlock: (novoNumero) {
+      onUnlock: (novoNumero) async {
         if (!elementosDesbloqueados.contains(novoNumero)) {
+          // Atualiza a tela imediatamente para o jogador
           setState(() {
             elementosDesbloqueados.add(novoNumero);
           });
+          // SALVA NO BANCO DE DADOS EM SEGUNDO PLANO!
+          await DbHelper.instance.addDesbloqueado(novoNumero);
         }
       },
     );
+  }
+
+  // --- FUNÇÃO QUE CARREGA O PROGRESSO DO SQLITE ---
+  Future<void> _carregarProgresso() async {
+    final salvos = await DbHelper.instance.getDesbloqueados();
+    setState(() {
+      elementosDesbloqueados = salvos;
+      carregandoDb = false;
+    });
   }
 
   // --- FUNÇÃO AUXILIAR PARA A TABELA PERIÓDICA ---
@@ -218,10 +235,54 @@ class HomePageState extends State<HomePage> {
 
   // --- WIDGET DA ENCICLOPÉDIA ---
   Widget _buildEnciclopedia(bool isDark) {
+    // Verifica se todos os 118 elementos foram encontrados
+    // Como sua lista começa com [1], se o tamanho for 118, está completo.
+    bool tabelaCompleta = elementosDesbloqueados.length >= 118;
+
     return ListView.builder(
-      itemCount: elementosDesbloqueados.length,
+      // Se estiver completo, adicionamos +1 espaço para o botão no topo
+      itemCount: elementosDesbloqueados.length + (tabelaCompleta ? 1 : 0),
       itemBuilder: (context, index) {
-        int numElemento = elementosDesbloqueados[index];
+        // Se a tabela estiver completa e for o primeiro item da lista...
+        if (tabelaCompleta && index == 0) {
+          return Card(
+            elevation: 5,
+            color: isDark ? const Color(0xFF3D3D3D) : Colors.amber[50],
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(
+                color: isDark ? Colors.white54 : Colors.orangeAccent,
+                width: 1.5,
+              ),
+            ),
+            child: ListTile(
+              onTap: () {
+                // Aqui chamaremos a animação de transição da Radiância
+                print("Etapa 2");
+              },
+              leading: CircleAvatar(
+                backgroundColor: Colors.orangeAccent,
+                child: Icon(
+                  FontAwesomeIcons.atom,
+                  color: isDark ? Colors.black : Colors.white,
+                ),
+              ),
+              title: const Text(
+                "ETAPA 2: SÍNTESE MOLECULAR",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: const Text(
+                "O núcleo está pronto. Toque para transcender.",
+              ),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            ),
+          );
+        }
+
+        // Ajustamos o índice para os elementos normais se o botão estiver ativo
+        int indiceElemento = tabelaCompleta ? index - 1 : index;
+        int numElemento = elementosDesbloqueados[indiceElemento];
         var elemento = listaElementos[numElemento];
         String molecula = principaisMoleculas[numElemento] ?? "Desconhecida";
 
@@ -229,10 +290,7 @@ class HomePageState extends State<HomePage> {
           color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: ListTile(
-            onTap: () => _mostrarDetalhesElemento(
-              elemento,
-              isDark,
-            ), // AQUI: Chama o Pop-up
+            onTap: () => _mostrarDetalhesElemento(elemento, isDark),
             leading: CircleAvatar(
               backgroundColor: isDark ? Colors.grey[700] : Colors.blueGrey,
               child: Text(
@@ -245,9 +303,7 @@ class HomePageState extends State<HomePage> {
             ),
             title: Text("${elemento['numero']} - ${elemento['nome']}"),
             subtitle: Text("Molécula: $molecula\nPeso: ${elemento['peso']}u"),
-            trailing: const Icon(
-              Icons.info_outline,
-            ), // Ícone pra indicar que dá pra clicar
+            trailing: const Icon(Icons.info_outline),
           ),
         );
       },
@@ -265,7 +321,7 @@ class HomePageState extends State<HomePage> {
       boundaryMargin: const EdgeInsets.all(
         60,
       ), // Margem maior para o usuário poder rolar livremente
-      //minScale: 0.00001, // Zoom-out 
+      //minScale: 0.00001, // Zoom-out
       //maxScale: 1.5, // Limite de zoom-in
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -472,7 +528,7 @@ class HomePageState extends State<HomePage> {
                   Text(
                     "• Para fundir elementos arraste os para cima de outro.\n\n"
                     "• Somente o hidrogênio tem estoque infinito.\n\n"
-                    "• Os elemntos desbloqueados poderão ser vistos nas abas Enciclopedia e Status la tera mais datalhes de cada elemento.\n\n"
+                    "• Os elemntos desbloqueados poderão ser vistos nas abas Enciclopédia e Status la tera mais datalhes de cada elemento.\n\n"
                     "• Na aba enciclopédia Haverá a opção de ir para a segunda etapa do jogo complete a tabela periódica e encontre a.",
                     style: TextStyle(
                       fontSize: 15,
