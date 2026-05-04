@@ -57,19 +57,18 @@ class DbHelper {
     // Converte a lista de JSONs para uma lista de números inteiros
     return result.map((json) => json['numero'] as int).toList();
   }
-}
-// No db_helper.dart, dentro do _createDB:
 
-// Adicione as funções de manipulação:
-Future<void> addMolecula(int id) async {
-  final db = await instance.database;
-  await db.insert('moleculas_desbloqueadas', {
-    'id_molecula': id,
-  }, conflictAlgorithm: ConflictAlgorithm.ignore);
-}
+  // Adicione as funções de manipulação:
+  Future<void> addMolecula(int id) async {
+    final db = await instance.database;
+    await db.insert('moleculas_desbloqueadas', {
+      'id_molecula': id,
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
+  }
 
-Future<List<int>> getMoleculas() async {
-  final db = await instance.database;
-  final result = await db.query('moleculas_desbloqueadas');
-  return result.map((json) => json['id_molecula'] as int).toList();
+  Future<List<int>> getMoleculas() async {
+    final db = await instance.database;
+    final result = await db.query('moleculas_desbloqueadas');
+    return result.map((json) => json['id_molecula'] as int).toList();
+  }
 }

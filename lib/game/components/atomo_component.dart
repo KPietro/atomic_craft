@@ -48,7 +48,7 @@ class AtomoComponent extends PositionComponent
     ).render(
       canvas,
       "${dados['numero'] ?? ''}",
-      Vector2(6, 4), // Coordenada X, Y para simular o "left: 4, top: 2"
+      Vector2(6, 4), // Coordenada X, Y para posicionar no canto superior esquerdo
       anchor: Anchor.topLeft,
     );
 

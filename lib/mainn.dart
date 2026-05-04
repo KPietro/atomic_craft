@@ -1634,7 +1634,7 @@ class AtomoComponent extends PositionComponent
     ).render(
       canvas,
       "${dados['numero'] ?? ''}",
-      Vector2(6, 4), // Coordenada X, Y para simular o "left: 4, top: 2"
+      Vector2(6, 4), // Coordenada X, Y para posicionar no canto superior esquerdo
       anchor: Anchor.topLeft,
     );
 
@@ -1970,8 +1970,8 @@ class _HomePageState extends State<_HomePage> {
       boundaryMargin: const EdgeInsets.all(
         60,
       ), // Margem maior para o usuário poder rolar livremente
-      //minScale: 0.00001, // Zoom-out ideal para ver a tabela toda
-      //maxScale: 1.5, // Limite de zoom-in (não tão exagerado)
+      //minScale: 0.00001, // Zoom-out 
+      //maxScale: 1.5, // Limite de zoom-in 
       child: Container(
         padding: const EdgeInsets.all(16),
         width: (18 * (tamanhoCelula + espacamento)) + 112,
@@ -2177,8 +2177,8 @@ class _HomePageState extends State<_HomePage> {
                   Text(
                     "• Para fundir elementos arraste os para cima de outro.\n\n"
                     "• Somente o hidrogênio tem estoque infinito.\n\n"
-                    "• Os outros elementos podem ser guardados na gaveta acima do hidrogênio.\n\n"
-                    "• Os elementos já desbloqueados aparecerão embaixo do hidrogênio, meio transparentes e em ordem de desbloqueio.",
+                    "• Os elemntos desbloqueados poderão ser vistos nas abas Enciclopédia e Status la tera mais datalhes de cada elemento.\n\n"
+                    "• Na aba enciclopédia Haverá a opção de ir para a segunda etapa do jogo complete a tabela periódica e encontre a.",
                     style: TextStyle(
                       fontSize: 15,
                       color: isDark ? Colors.white70 : Colors.black87,

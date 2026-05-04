@@ -15,6 +15,7 @@ class HomePage extends StatefulWidget {
 class HomePageState extends State<HomePage> {
   int indiceAtual = 0;
   bool tutol = false;
+  int etapaAtual = 1;
   late AtomCGame game;
   // --- FUNÇÃO PARA MOSTRAR DETALHES DO ELEMENTO ---
   void _mostrarDetalhesElemento(Map<String, dynamic> elemento, bool isDark) {
@@ -238,6 +239,33 @@ class HomePageState extends State<HomePage> {
     // Verifica se todos os 118 elementos foram encontrados
     // Como sua lista começa com [1], se o tamanho for 118, está completo.
     bool tabelaCompleta = elementosDesbloqueados.length >= 118;
+    // SE ESTIVERMOS NA ETAPA 2
+    if (etapaAtual == 2) {
+      return Column(
+        children: [
+          // Botão de voltar
+          Card(
+            color: Colors.blueAccent.withOpacity(0.2),
+            margin: const EdgeInsets.all(16),
+            child: ListTile(
+              onTap: () => setState(() => etapaAtual = 1), // VOLTA PRA ETAPA 1
+              leading: const Icon(Icons.arrow_back),
+              title: const Text(
+                "VOLTAR PARA ETAPA 1",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: const Text("Retornar à síntese nuclear"),
+            ),
+          ),
+          Expanded(
+            child: Center(
+              // Por enquanto é um placeholder, depois colocamos a lista do novo JSON aqui!
+              child: Text("Sua lista de moléculas aparecerá aqui!"),
+            ),
+          ),
+        ],
+      );
+    }
 
     return ListView.builder(
       // Se estiver completo, adicionamos +1 espaço para o botão no topo
@@ -258,8 +286,8 @@ class HomePageState extends State<HomePage> {
             ),
             child: ListTile(
               onTap: () {
-                // Aqui chamaremos a animação de transição da Radiância
-                print("Etapa 2");
+                // AQUI NÓS MUDAMOS A ETAPA!
+                setState(() => etapaAtual = 2);
               },
               leading: CircleAvatar(
                 backgroundColor: Colors.orangeAccent,
@@ -695,6 +723,65 @@ class HomePageState extends State<HomePage> {
           ),
         ),
       ],
+    );
+  }
+
+  // --- NOVA BARRA PARA A ETAPA 2 (TODOS OS ÁTOMOS) ---
+  Widget _barraLateralEtapa2(bool isDark) {
+    return ListView.builder(
+      itemCount: listaElementos.length - 1, // Ignora o nulo
+      itemBuilder: (context, index) {
+        var el = listaElementos[index + 1];
+
+        // Opcional: Só deixa pegar átomos que você já desbloqueou na Etapa 1
+        bool podeUsar = elementosDesbloqueados.contains(el['numero']);
+
+        return GestureDetector(
+          onTap: () {
+            if (podeUsar) game.spawnElement(el['numero']);
+          },
+          child: Opacity(
+            opacity: podeUsar
+                ? 1.0
+                : 0.3, // Fica meio apagado se não descobriu ainda
+            child: Container(
+              width: 65,
+              height: 65,
+              margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+                border: Border.all(
+                  color: isDark ? Colors.white : Colors.black,
+                  width: 1.2,
+                ),
+              ),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      el['simbolo'],
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      el['nome'],
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black,
+                        fontSize: 8,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
