@@ -16,6 +16,7 @@ class HomePageState extends State<HomePage> {
   int indiceAtual = 0;
   bool tutol = false;
   int etapaAtual = 1;
+  int tipoLigacao = 1; // 1 = Simples, 2 = Dupla, 3 = Tripla
   late AtomCGame game;
   // --- FUNÇÃO PARA MOSTRAR DETALHES DO ELEMENTO ---
   void _mostrarDetalhesElemento(Map<String, dynamic> elemento, bool isDark) {
@@ -648,7 +649,29 @@ class HomePageState extends State<HomePage> {
             ],
           ),
         ),
-
+if (etapaAtual == 2)
+        Container(
+          height: 60,
+          color: isDark ? const Color(0xFF1E1325) : const Color(0xFFE6FFE7),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _botaoLigacao(1, "Simples (-)", isDark),
+              _botaoLigacao(2, "Dupla (=)", isDark),
+              _botaoLigacao(3, "Tripla (≡)", isDark),
+              // Botão para finalizar a molécula e salvar!
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                onPressed: () {
+                  // Aqui depois chamaremos a função do Flame que varre a tela
+                  print("Molécula concluída!"); 
+                },
+                icon: const Icon(Icons.check, color: Colors.white),
+                label: const Text("Sintetizar", style: TextStyle(color: Colors.white)),
+              )
+            ],
+          ),
+        )
         // Barra lateral do Hidrogênio (intacta)
         Container(
           width: 85,
