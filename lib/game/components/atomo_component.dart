@@ -48,7 +48,10 @@ class AtomoComponent extends PositionComponent
     ).render(
       canvas,
       "${dados['numero'] ?? ''}",
-      Vector2(6, 4), // Coordenada X, Y para posicionar no canto superior esquerdo
+      Vector2(
+        6,
+        4,
+      ), // Coordenada X, Y para posicionar no canto superior esquerdo
       anchor: Anchor.topLeft,
     );
 
@@ -89,7 +92,7 @@ class AtomoComponent extends PositionComponent
   @override
   void onDragEnd(DragEndEvent event) {
     super.onDragEnd(event);
-    gameRef.verificarFusao(this);
+    gameRef.verificarInteracao(this);
   }
 
   bool collidingWith(AtomoComponent outro) {

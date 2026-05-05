@@ -3,7 +3,7 @@ import 'package:flame/game.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../game/atom_game.dart';
 import '../data/elementos_data.dart';
-import '../data/db_helper.dart'; // Importe o helper que acabamos de criar
+import '../data/db_helper.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback onThemeToggle;
@@ -18,6 +18,51 @@ class HomePageState extends State<HomePage> {
   int etapaAtual = 1;
   int tipoLigacao = 1; // 1 = Simples, 2 = Dupla, 3 = Tripla
   late AtomCGame game;
+
+  // Guarda os desbloqueios em ordem
+  List<int> elementosDesbloqueados = [];
+  List<String> moleculasDesbloqueadas = []; // Lista para as moléculas
+  bool carregandoDb = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarProgresso();
+
+    game = AtomCGame(
+      onUnlock: (novoNumero) async {
+        if (!elementosDesbloqueados.contains(novoNumero)) {
+          setState(() => elementosDesbloqueados.add(novoNumero));
+          await DbHelper.instance.addDesbloqueado(novoNumero);
+        }
+      },
+      onMoleculaCriada: (formula) async {
+        if (!moleculasDesbloqueadas.contains(formula)) {
+          setState(() => moleculasDesbloqueadas.add(formula));
+          await DbHelper.instance.addMolecula(formula);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Nova fórmula sintetizada: $formula"),
+              duration: const Duration(seconds: 2),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      },
+    );
+  }
+
+  // --- FUNÇÃO QUE CARREGA O PROGRESSO DO SQLITE ---
+  Future<void> _carregarProgresso() async {
+    final salvos = await DbHelper.instance.getDesbloqueados();
+    final molsSalvas = await DbHelper.instance.getMoleculas();
+    setState(() {
+      elementosDesbloqueados = salvos;
+      moleculasDesbloqueadas = molsSalvas;
+      carregandoDb = false;
+    });
+  }
+
   // --- FUNÇÃO PARA MOSTRAR DETALHES DO ELEMENTO ---
   void _mostrarDetalhesElemento(Map<String, dynamic> elemento, bool isDark) {
     showDialog(
@@ -109,43 +154,9 @@ class HomePageState extends State<HomePage> {
     );
   }
 
-  // Guarda os desbloqueios em ordem
-  List<int> elementosDesbloqueados = [];
-  bool carregandoDb = true; // Para saber se os dados já vieram do banco
-
-  @override
-  void initState() {
-    super.initState();
-    _carregarProgresso(); // Chama a função que lê o SQLite
-
-    game = AtomCGame(
-      onUnlock: (novoNumero) async {
-        if (!elementosDesbloqueados.contains(novoNumero)) {
-          // Atualiza a tela imediatamente para o jogador
-          setState(() {
-            elementosDesbloqueados.add(novoNumero);
-          });
-          // SALVA NO BANCO DE DADOS EM SEGUNDO PLANO!
-          await DbHelper.instance.addDesbloqueado(novoNumero);
-        }
-      },
-    );
-  }
-
-  // --- FUNÇÃO QUE CARREGA O PROGRESSO DO SQLITE ---
-  Future<void> _carregarProgresso() async {
-    final salvos = await DbHelper.instance.getDesbloqueados();
-    setState(() {
-      elementosDesbloqueados = salvos;
-      carregandoDb = false;
-    });
-  }
-
-  // --- FUNÇÃO AUXILIAR PARA A TABELA PERIÓDICA ---
   // --- FUNÇÃO AUXILIAR PARA A TABELA PERIÓDICA ---
   List<int> _obterPosicaoTabela(int n) {
-    int col = 0;
-    int row = 0;
+    int col = 0, row = 0;
     if (n == 1) {
       col = 0;
       row = 0;
@@ -173,9 +184,7 @@ class HomePageState extends State<HomePage> {
     } else if (n >= 55 && n <= 56) {
       col = n - 55;
       row = 5;
-    }
-    // Lantanídeos (57-71) centralizados na linha 7 (colunas 2 a 16)
-    else if (n >= 57 && n <= 71) {
+    } else if (n >= 57 && n <= 71) {
       col = n - 55;
       row = 7;
     } else if (n >= 72 && n <= 86) {
@@ -184,9 +193,7 @@ class HomePageState extends State<HomePage> {
     } else if (n >= 87 && n <= 88) {
       col = n - 87;
       row = 6;
-    }
-    // Actinídeos (89-103) centralizados na linha 8 (colunas 2 a 16)
-    else if (n >= 89 && n <= 103) {
+    } else if (n >= 89 && n <= 103) {
       col = n - 87;
       row = 8;
     } else if (n >= 104 && n <= 118) {
@@ -199,57 +206,50 @@ class HomePageState extends State<HomePage> {
   // --- FUNÇÃO PARA DEFINIR A COR DA FAMÍLIA ---
   Color _obterCorFamilia(int n, bool isDark) {
     Color base;
-
-    if (n == 1 || (n >= 6 && n <= 8) || n == 15 || n == 16 || n == 34) {
-      base = Colors.green; // Não-metais
-    } else if (n == 2 ||
+    if (n == 1 || (n >= 6 && n <= 8) || n == 15 || n == 16 || n == 34)
+      base = Colors.green;
+    else if (n == 2 ||
         n == 10 ||
         n == 18 ||
         n == 36 ||
         n == 54 ||
         n == 86 ||
-        n == 118) {
-      base = Colors.cyan; // Gases Nobres
-    } else if (n == 3 || n == 11 || n == 19 || n == 37 || n == 55 || n == 87) {
-      base = Colors.orange; // Metais Alcalinos
-    } else if (n == 4 || n == 12 || n == 20 || n == 38 || n == 56 || n == 88) {
-      base = Colors.yellow; // Alcalinoterrosos
-    } else if ((n >= 21 && n <= 30) ||
+        n == 118)
+      base = Colors.cyan;
+    else if (n == 3 || n == 11 || n == 19 || n == 37 || n == 55 || n == 87)
+      base = Colors.orange;
+    else if (n == 4 || n == 12 || n == 20 || n == 38 || n == 56 || n == 88)
+      base = Colors.yellow;
+    else if ((n >= 21 && n <= 30) ||
         (n >= 39 && n <= 48) ||
         (n >= 72 && n <= 80) ||
-        (n >= 104 && n <= 112)) {
-      base = Colors.pinkAccent; // Metais de Transição
-    } else if (n == 5 || n == 14 || n == 32 || n == 33 || n == 51 || n == 52) {
-      base = Colors.teal; // Metaloides
-    } else if (n == 9 || n == 17 || n == 35 || n == 53 || n == 85 || n == 117) {
-      base = Colors.lightBlue; // Halogênios
-    } else if (n >= 57 && n <= 71) {
-      base = Colors.purpleAccent; // Lantanídeos
-    } else if (n >= 89 && n <= 103) {
-      base = Colors.deepPurpleAccent; // Actinídeos
-    } else {
-      base = Colors.blueGrey; // Pós-transição (Al, Ga, Pb, etc)
-    }
-
-    // Se o modo escuro estiver ativo, deixamos a cor mais escura/transparente
+        (n >= 104 && n <= 112))
+      base = Colors.pinkAccent;
+    else if (n == 5 || n == 14 || n == 32 || n == 33 || n == 51 || n == 52)
+      base = Colors.teal;
+    else if (n == 9 || n == 17 || n == 35 || n == 53 || n == 85 || n == 117)
+      base = Colors.lightBlue;
+    else if (n >= 57 && n <= 71)
+      base = Colors.purpleAccent;
+    else if (n >= 89 && n <= 103)
+      base = Colors.deepPurpleAccent;
+    else
+      base = Colors.blueGrey;
     return isDark ? base.withOpacity(0.3) : base.withOpacity(0.6);
   }
 
   // --- WIDGET DA ENCICLOPÉDIA ---
   Widget _buildEnciclopedia(bool isDark) {
-    // Verifica se todos os 118 elementos foram encontrados
-    // Como sua lista começa com [1], se o tamanho for 118, está completo.
     bool tabelaCompleta = elementosDesbloqueados.length >= 118;
-    // SE ESTIVERMOS NA ETAPA 2
+
     if (etapaAtual == 2) {
       return Column(
         children: [
-          // Botão de voltar
           Card(
             color: Colors.blueAccent.withOpacity(0.2),
             margin: const EdgeInsets.all(16),
             child: ListTile(
-              onTap: () => setState(() => etapaAtual = 1), // VOLTA PRA ETAPA 1
+              onTap: () => setState(() => etapaAtual = 1),
               leading: const Icon(Icons.arrow_back),
               title: const Text(
                 "VOLTAR PARA ETAPA 1",
@@ -259,9 +259,38 @@ class HomePageState extends State<HomePage> {
             ),
           ),
           Expanded(
-            child: Center(
-              // Por enquanto é um placeholder, depois colocamos a lista do novo JSON aqui!
-              child: Text("Sua lista de moléculas aparecerá aqui!"),
+            child: ListView.builder(
+              itemCount: moleculasDesbloqueadas.length,
+              itemBuilder: (context, index) {
+                String formula = moleculasDesbloqueadas[index];
+                return Card(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: isDark
+                          ? Colors.grey[700]
+                          : Colors.blueGrey,
+                      child: const Text(
+                        "M",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                    title: Text(
+                      formula,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                      ),
+                    ),
+                    subtitle: const Text(
+                      "Fórmula estrutural sintetizada com sucesso.",
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -269,10 +298,8 @@ class HomePageState extends State<HomePage> {
     }
 
     return ListView.builder(
-      // Se estiver completo, adicionamos +1 espaço para o botão no topo
       itemCount: elementosDesbloqueados.length + (tabelaCompleta ? 1 : 0),
       itemBuilder: (context, index) {
-        // Se a tabela estiver completa e for o primeiro item da lista...
         if (tabelaCompleta && index == 0) {
           return Card(
             elevation: 5,
@@ -286,10 +313,7 @@ class HomePageState extends State<HomePage> {
               ),
             ),
             child: ListTile(
-              onTap: () {
-                // AQUI NÓS MUDAMOS A ETAPA!
-                setState(() => etapaAtual = 2);
-              },
+              onTap: () => setState(() => etapaAtual = 2),
               leading: CircleAvatar(
                 backgroundColor: Colors.orangeAccent,
                 child: Icon(
@@ -309,7 +333,6 @@ class HomePageState extends State<HomePage> {
           );
         }
 
-        // Ajustamos o índice para os elementos normais se o botão estiver ativo
         int indiceElemento = tabelaCompleta ? index - 1 : index;
         int numElemento = elementosDesbloqueados[indiceElemento];
         var elemento = listaElementos[numElemento];
@@ -347,15 +370,10 @@ class HomePageState extends State<HomePage> {
 
     return InteractiveViewer(
       constrained: false,
-      boundaryMargin: const EdgeInsets.all(
-        60,
-      ), // Margem maior para o usuário poder rolar livremente
-      //minScale: 0.00001, // Zoom-out
-      //maxScale: 1.5, // Limite de zoom-in
+      boundaryMargin: const EdgeInsets.all(60),
       child: Container(
         padding: const EdgeInsets.all(16),
         width: (18 * (tamanhoCelula + espacamento)) + 112,
-        // Aumentei o height para garantir que as últimas linhas não sejam cortadas
         height: (10 * (tamanhoCelula + espacamento)) + 250,
         child: Stack(
           children: List.generate(listaElementos.length - 1, (index) {
@@ -368,8 +386,6 @@ class HomePageState extends State<HomePage> {
             double topPos =
                 pos[1] * (tamanhoCelula + espacamento) +
                 (pos[1] >= 7 ? 20.0 : 0.0);
-
-            // AQUI É ONDE A MÁGICA DA COR ACONTECE
             Color corFundo = desbloqueado
                 ? _obterCorFamilia(numero, isDark)
                 : (isDark
@@ -396,7 +412,7 @@ class HomePageState extends State<HomePage> {
                 },
                 child: Container(
                   decoration: BoxDecoration(
-                    color: corFundo, // Aplica a cor definida
+                    color: corFundo,
                     border: Border.all(
                       color: desbloqueado
                           ? (isDark ? Colors.white : Colors.black)
@@ -468,8 +484,14 @@ class HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    if (carregandoDb) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     game.isDark = isDark;
+    game.etapaAtual = etapaAtual; // Atualiza o jogo com a etapa
+    game.tipoLigacaoSelecionada = tipoLigacao; // Atualiza a ligação
 
     final List<Widget> paginas = [
       _buildPaginaCraft(isDark, context),
@@ -497,6 +519,25 @@ class HomePageState extends State<HomePage> {
     );
   }
 
+  // --- HELPER DO BOTÃO DE LIGAÇÃO ---
+  Widget _botaoLigacao(int valor, String texto, bool isDark) {
+    bool selecionado = tipoLigacao == valor;
+    return ChoiceChip(
+      label: Text(
+        texto,
+        style: TextStyle(
+          fontWeight: selecionado ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+      selected: selecionado,
+      selectedColor: Colors.orangeAccent,
+      backgroundColor: isDark ? Colors.grey[800] : Colors.white,
+      onSelected: (bool selected) {
+        if (selected) setState(() => tipoLigacao = valor);
+      },
+    );
+  }
+
   // --- WIDGET DO CRAFT ---
   Widget _buildPaginaCraft(bool isDark, BuildContext context) {
     void mostrarTutorialDialog(BuildContext context, bool isDark) {
@@ -505,19 +546,15 @@ class HomePageState extends State<HomePage> {
         builder: (BuildContext context) {
           return Dialog(
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(
-                20,
-              ), // Cantos bem arredondados como na foto
+              borderRadius: BorderRadius.circular(20),
             ),
             backgroundColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
             child: Padding(
               padding: const EdgeInsets.all(24.0),
               child: Column(
-                mainAxisSize:
-                    MainAxisSize.min, // Faz a caixa abraçar o conteúdo
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Cabeçalho com Ícone e Título
                   Row(
                     children: [
                       Container(
@@ -531,7 +568,7 @@ class HomePageState extends State<HomePage> {
                         ),
                         alignment: Alignment.center,
                         child: Icon(
-                          Icons.menu_book_rounded, // Ícone de livrinho
+                          Icons.menu_book_rounded,
                           color: isDark ? Colors.white : Colors.black,
                           size: 28,
                         ),
@@ -548,12 +585,8 @@ class HomePageState extends State<HomePage> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  Divider(
-                    color: Colors.grey.withOpacity(0.3),
-                  ), // Linha sutil separando
+                  Divider(color: Colors.grey.withOpacity(0.3)),
                   const SizedBox(height: 16),
-
-                  // Texto do Tutorial
                   Text(
                     "• Para fundir elementos arraste os para cima de outro.\n\n"
                     "• Somente o hidrogênio tem estoque infinito.\n\n"
@@ -566,19 +599,14 @@ class HomePageState extends State<HomePage> {
                     ),
                   ),
                   const SizedBox(height: 24),
-
-                  // Botão Fechar
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
-                      onPressed: () => Navigator.of(
-                        context,
-                      ).pop(), // Isso fecha a janelinha!
+                      onPressed: () => Navigator.of(context).pop(),
                       child: const Text(
                         "Fechar",
                         style: TextStyle(
-                          color: Colors
-                              .blueAccent, // Aquele azul clássico da sua foto
+                          color: Colors.blueAccent,
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
@@ -593,184 +621,157 @@ class HomePageState extends State<HomePage> {
       );
     }
 
-    return Row(
+    return Column(
       children: [
         Expanded(
-          child: Stack(
-            children: [
-              GameWidget(game: game),
-
-              // Botão de engrenagem
-              Positioned(
-                bottom: 10,
-                left: 10,
-                child: IconButton(
-                  icon: Icon(
-                    Icons.settings,
-                    color: isDark ? Colors.white : Colors.black,
-                    size: 32,
-                  ),
-                  onPressed: () async {
-                    final res = await showMenu<int>(
-                      context: context,
-                      position: const RelativeRect.fromLTRB(0, 680, 0, 0),
-                      color: isDark
-                          ? const Color(0xFF1E1325)
-                          : const Color(0xFFE6FFE7),
-                      items: const [
-                        PopupMenuItem(value: 1, child: Text("Tutorial")),
-                        PopupMenuItem(value: 2, child: Text("Modo Escuro")),
-                      ],
-                    );
-                    // Aqui chamamos a janelinha bonita em vez de mudar o estado!
-                    if (res == 1) mostrarTutorialDialog(context, isDark);
-                    if (res == 2) widget.onThemeToggle();
-                  },
-                ),
-              ),
-
-              // Lixeira
-              Positioned(
-                top: 15,
-                left: 15,
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.red.withOpacity(0.5)),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.delete,
-                    color: Colors.redAccent,
-                    size: 28,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-if (etapaAtual == 2)
-        Container(
-          height: 60,
-          color: isDark ? const Color(0xFF1E1325) : const Color(0xFFE6FFE7),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _botaoLigacao(1, "Simples (-)", isDark),
-              _botaoLigacao(2, "Dupla (=)", isDark),
-              _botaoLigacao(3, "Tripla (≡)", isDark),
-              // Botão para finalizar a molécula e salvar!
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                onPressed: () {
-                  // Aqui depois chamaremos a função do Flame que varre a tela
-                  print("Molécula concluída!"); 
-                },
-                icon: const Icon(Icons.check, color: Colors.white),
-                label: const Text("Sintetizar", style: TextStyle(color: Colors.white)),
-              )
-            ],
-          ),
-        )
-        // Barra lateral do Hidrogênio (intacta)
-        Container(
-          width: 85,
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E1325) : const Color(0xFFE6FFE7),
-            border: const Border(left: BorderSide(color: Colors.black12)),
-          ),
-          child: Column(
-            children: [
-              const SizedBox(height: 50),
-              GestureDetector(
-                onTap: () => game.spawnElement(1),
-                child: Container(
-                  width: 65,
-                  height: 65,
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
-                    border: Border.all(
-                      color: isDark ? Colors.white : Colors.black,
-                      width: 1.2,
+              Expanded(
+                child: Stack(
+                  children: [
+                    // AQUI FICA A ÁREA DE DRAG AND DROP
+                    DragTarget<int>(
+                      builder: (context, candidateData, rejectedData) {
+                        return GameWidget(game: game);
+                      },
+                      onAcceptWithDetails: (details) {
+                        RenderBox renderBox =
+                            context.findRenderObject() as RenderBox;
+                        Offset localPosition = renderBox.globalToLocal(
+                          details.offset,
+                        );
+                        // Cria o átomo exatamente onde o dedo soltou!
+                        game.spawnElement(
+                          details.data,
+                          posicao: Vector2(localPosition.dx, localPosition.dy),
+                        );
+                      },
                     ),
-                  ),
-                  child: Stack(
-                    children: [
-                      Positioned(
-                        top: 2,
-                        left: 4,
-                        child: Text(
-                          "1",
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : Colors.black,
+
+                    Positioned(
+                      bottom: 10,
+                      left: 10,
+                      child: IconButton(
+                        icon: Icon(
+                          Icons.settings,
+                          color: isDark ? Colors.white : Colors.black,
+                          size: 32,
+                        ),
+                        onPressed: () async {
+                          final res = await showMenu<int>(
+                            context: context,
+                            position: const RelativeRect.fromLTRB(0, 680, 0, 0),
+                            color: isDark
+                                ? const Color(0xFF1E1325)
+                                : const Color(0xFFE6FFE7),
+                            items: const [
+                              PopupMenuItem(value: 1, child: Text("Tutorial")),
+                              PopupMenuItem(
+                                value: 2,
+                                child: Text("Modo Escuro"),
+                              ),
+                            ],
+                          );
+                          if (res == 1) mostrarTutorialDialog(context, isDark);
+                          if (res == 2) widget.onThemeToggle();
+                        },
+                      ),
+                    ),
+
+                    Positioned(
+                      top: 15,
+                      left: 15,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Colors.red.withOpacity(0.5),
                           ),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.delete,
+                          color: Colors.redAccent,
+                          size: 28,
                         ),
                       ),
-                      Align(
-                        alignment: Alignment.center,
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              "H",
-                              style: TextStyle(
-                                color: isDark ? Colors.white : Colors.black,
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              "Hidrogênio",
-                              style: TextStyle(
-                                color: isDark ? Colors.white : Colors.black,
-                                fontSize: 8,
-                              ),
-                            ),
-                            Text(
-                              "1.008u",
-                              style: TextStyle(
-                                color: isDark ? Colors.white : Colors.black,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
+              ),
+
+              // BARRA LATERAL DINÂMICA
+              Container(
+                width: 85,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color(0xFF1E1325)
+                      : const Color(0xFFE6FFE7),
+                  border: const Border(left: BorderSide(color: Colors.black12)),
+                ),
+                child: etapaAtual == 1
+                    ? _barraLateralEtapa1(isDark)
+                    : _barraLateralEtapa2(isDark),
               ),
             ],
           ),
         ),
+
+        // SELETOR DE LIGAÇÕES (SÓ NA ETAPA 2) - Sem o botão de sintetizar!
+        if (etapaAtual == 2)
+          Container(
+            height: 60,
+            color: isDark ? const Color(0xFF1E1325) : const Color(0xFFE6FFE7),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _botaoLigacao(1, "Simples (-)", isDark),
+                _botaoLigacao(2, "Dupla (=)", isDark),
+                _botaoLigacao(3, "Tripla (≡)", isDark),
+              ],
+            ),
+          ),
       ],
     );
   }
 
-  // --- NOVA BARRA PARA A ETAPA 2 (TODOS OS ÁTOMOS) ---
-  Widget _barraLateralEtapa2(bool isDark) {
-    return ListView.builder(
-      itemCount: listaElementos.length - 1, // Ignora o nulo
-      itemBuilder: (context, index) {
-        var el = listaElementos[index + 1];
-
-        // Opcional: Só deixa pegar átomos que você já desbloqueou na Etapa 1
-        bool podeUsar = elementosDesbloqueados.contains(el['numero']);
-
-        return GestureDetector(
-          onTap: () {
-            if (podeUsar) game.spawnElement(el['numero']);
-          },
-          child: Opacity(
-            opacity: podeUsar
-                ? 1.0
-                : 0.3, // Fica meio apagado se não descobriu ainda
+  // --- BARRA LATERAL ETAPA 1 (Apenas Hidrogênio - Agora com Drag) ---
+  Widget _barraLateralEtapa1(bool isDark) {
+    return Column(
+      children: [
+        const SizedBox(height: 50),
+        Draggable<int>(
+          data: 1,
+          feedback: Material(
+            color: Colors.transparent,
+            child: Opacity(
+              opacity: 0.8,
+              child: Container(
+                width: 65,
+                height: 65,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+                  border: Border.all(color: Colors.orangeAccent, width: 2),
+                ),
+                child: Center(
+                  child: Text(
+                    "H",
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          childWhenDragging: Container(),
+          child: GestureDetector(
+            onTap: () => game.spawnElement(1),
             child: Container(
               width: 65,
               height: 65,
-              margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
                 border: Border.all(
@@ -778,12 +779,87 @@ if (etapaAtual == 2)
                   width: 1.2,
                 ),
               ),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
+              child: Stack(
+                children: [
+                  Positioned(
+                    top: 2,
+                    left: 4,
+                    child: Text(
+                      "1",
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.center,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            "H",
+                            style: TextStyle(
+                              color: isDark ? Colors.white : Colors.black,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            "Hidrogênio",
+                            style: TextStyle(
+                              color: isDark ? Colors.white : Colors.black,
+                              fontSize: 8,
+                            ),
+                          ),
+                          Text(
+                            "1.008u",
+                            style: TextStyle(
+                              color: isDark ? Colors.white : Colors.black,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // --- NOVA BARRA PARA A ETAPA 2 (TODOS OS ÁTOMOS - Com Drag) ---
+  Widget _barraLateralEtapa2(bool isDark) {
+    return ListView.builder(
+      itemCount: listaElementos.length - 1,
+      itemBuilder: (context, index) {
+        var el = listaElementos[index + 1];
+        bool podeUsar = elementosDesbloqueados.contains(el['numero']);
+
+        return Opacity(
+          opacity: podeUsar ? 1.0 : 0.3,
+          child: Draggable<int>(
+            data: podeUsar ? el['numero'] : null,
+            feedback: Material(
+              color: Colors.transparent,
+              child: Opacity(
+                opacity: 0.8,
+                child: Container(
+                  width: 65,
+                  height: 65,
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+                    border: Border.all(color: Colors.orangeAccent, width: 2),
+                  ),
+                  child: Center(
+                    child: Text(
                       el['simbolo'],
                       style: TextStyle(
                         color: isDark ? Colors.white : Colors.black,
@@ -791,14 +867,48 @@ if (etapaAtual == 2)
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    Text(
-                      el['nome'],
-                      style: TextStyle(
-                        color: isDark ? Colors.white : Colors.black,
-                        fontSize: 8,
+                  ),
+                ),
+              ),
+            ),
+            childWhenDragging: Container(),
+            child: GestureDetector(
+              onTap: () {
+                if (podeUsar) game.spawnElement(el['numero']);
+              },
+              child: Container(
+                width: 65,
+                height: 65,
+                margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+                  border: Border.all(
+                    color: isDark ? Colors.white : Colors.black,
+                    width: 1.2,
+                  ),
+                ),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        el['simbolo'],
+                        style: TextStyle(
+                          color: isDark ? Colors.white : Colors.black,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                  ],
+                      Text(
+                        el['nome'],
+                        style: TextStyle(
+                          color: isDark ? Colors.white : Colors.black,
+                          fontSize: 8,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

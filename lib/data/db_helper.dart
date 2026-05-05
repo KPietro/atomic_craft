@@ -31,7 +31,7 @@ class DbHelper {
     ''');
     await db.execute('''
     CREATE TABLE moleculas_desbloqueadas (
-      id_molecula INTEGER PRIMARY KEY
+      formula TEXT PRIMARY KEY
     )
     ''');
     // Já insere o Hidrogênio (1) como padrão para o jogador não começar zerado
@@ -59,16 +59,16 @@ class DbHelper {
   }
 
   // Adicione as funções de manipulação:
-  Future<void> addMolecula(int id) async {
+  Future<void> addMolecula(String formula) async {
     final db = await instance.database;
     await db.insert('moleculas_desbloqueadas', {
-      'id_molecula': id,
+      'formula': formula,
     }, conflictAlgorithm: ConflictAlgorithm.ignore);
   }
 
-  Future<List<int>> getMoleculas() async {
+  Future<List<String>> getMoleculas() async {
     final db = await instance.database;
     final result = await db.query('moleculas_desbloqueadas');
-    return result.map((json) => json['id_molecula'] as int).toList();
+    return result.map((json) => json['formula'] as String).toList();
   }
 }
