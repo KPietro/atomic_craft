@@ -1,0 +1,18 @@
+[
+  {
+    "id_molecula": 1,
+    "formula": "H2O",
+    "nome": "Água",
+    "composicao": [1, 8], 
+    "caracteristicas": "Líquido incolor, inodoro e insípido em temperatura ambiente. É o solvente universal e essencial para toda a vida conhecida.",
+    "historia": "A água sempre foi conhecida, mas foi o químico Henry Cavendish, em 1781, quem descobriu que ela era composta por hidrogênio e oxigênio, provando que não era um elemento único."
+  },
+  {
+    "id_molecula": 2,
+    "formula": "CO2",
+    "nome": "Dióxido de Carbono",
+    "composicao": [6, 8],
+    "caracteristicas": "Gás incolor vital para a fotossíntese. Em estado sólido, é conhecido como gelo seco.",
+    "historia": "Identificado por Jan Baptist van Helmont no século XVII ao notar que a fumaça de carvão queimado era diferente do ar comum."
+  }
+]
