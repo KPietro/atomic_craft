@@ -16,12 +16,13 @@ class HomePageState extends State<HomePage> {
   int indiceAtual = 0;
   bool tutol = false;
   int etapaAtual = 1;
-  int tipoLigacao = 1; // 1 = Simples, 2 = Dupla, 3 = Tripla
+  int tipoLigacao = 1;
+  int modoFerramenta = 0;
   late AtomCGame game;
 
-  // Guarda os desbloqueios em ordem
   List<int> elementosDesbloqueados = [];
-  List<String> moleculasDesbloqueadas = []; // Lista para as moléculas
+  // Agora é uma lista de Dicionários (Maps) para guardar a fórmula e a descrição
+  List<Map<String, dynamic>> moleculasDesbloqueadas = [];
   bool carregandoDb = true;
 
   @override
@@ -37,8 +38,16 @@ class HomePageState extends State<HomePage> {
         }
       },
       onMoleculaCriada: (formula) async {
-        if (!moleculasDesbloqueadas.contains(formula)) {
-          setState(() => moleculasDesbloqueadas.add(formula));
+        bool jaExiste = moleculasDesbloqueadas.any(
+          (m) => m['formula'] == formula,
+        );
+        if (!jaExiste) {
+          setState(
+            () => moleculasDesbloqueadas.add({
+              'formula': formula,
+              'descricao': '',
+            }),
+          );
           await DbHelper.instance.addMolecula(formula);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -52,10 +61,10 @@ class HomePageState extends State<HomePage> {
     );
   }
 
-  // --- FUNÇÃO QUE CARREGA O PROGRESSO DO SQLITE ---
   Future<void> _carregarProgresso() async {
     final salvos = await DbHelper.instance.getDesbloqueados();
-    final molsSalvas = await DbHelper.instance.getMoleculas();
+    final molsSalvas = await DbHelper.instance
+        .getMoleculas(); // Pega a lista com as descrições
     setState(() {
       elementosDesbloqueados = salvos;
       moleculasDesbloqueadas = molsSalvas;
@@ -63,11 +72,81 @@ class HomePageState extends State<HomePage> {
     });
   }
 
+  // --- NOVO: POP-UP DE ANOTAÇÃO DA MOLÉCULA ---
+  void _editarDescricaoMolecula(int index, bool isDark) {
+    String formula = moleculasDesbloqueadas[index]['formula'];
+    TextEditingController controller = TextEditingController(
+      text: moleculasDesbloqueadas[index]['descricao'],
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+          title: Row(
+            children: [
+              const Icon(Icons.edit_note, color: Colors.blueAccent),
+              const SizedBox(width: 10),
+              Text(
+                "Anotações: $formula",
+                style: TextStyle(color: isDark ? Colors.white : Colors.black),
+              ),
+            ],
+          ),
+          content: TextField(
+            controller: controller,
+            maxLines: 4,
+            style: TextStyle(color: isDark ? Colors.white : Colors.black),
+            decoration: InputDecoration(
+              hintText: "Escreva suas anotações sobre essa molécula...",
+              hintStyle: TextStyle(
+                color: isDark ? Colors.white54 : Colors.black54,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                "Cancelar",
+                style: TextStyle(color: Colors.redAccent),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blueAccent,
+              ),
+              onPressed: () async {
+                String novaDesc = controller.text;
+                await DbHelper.instance.atualizarDescricaoMolecula(
+                  formula,
+                  novaDesc,
+                );
+                setState(() {
+                  moleculasDesbloqueadas[index]['descricao'] = novaDesc;
+                });
+                Navigator.pop(context);
+              },
+              child: const Text(
+                "Salvar",
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   // --- FUNÇÃO PARA MOSTRAR DETALHES DO ELEMENTO ---
   void _mostrarDetalhesElemento(Map<String, dynamic> elemento, bool isDark) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (context) {
         return AlertDialog(
           backgroundColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
           title: Row(
@@ -154,7 +233,6 @@ class HomePageState extends State<HomePage> {
     );
   }
 
-  // --- FUNÇÃO AUXILIAR PARA A TABELA PERIÓDICA ---
   List<int> _obterPosicaoTabela(int n) {
     int col = 0, row = 0;
     if (n == 1) {
@@ -203,7 +281,6 @@ class HomePageState extends State<HomePage> {
     return [col, row];
   }
 
-  // --- FUNÇÃO PARA DEFINIR A COR DA FAMÍLIA ---
   Color _obterCorFamilia(int n, bool isDark) {
     Color base;
     if (n == 1 || (n >= 6 && n <= 8) || n == 15 || n == 16 || n == 34)
@@ -238,10 +315,9 @@ class HomePageState extends State<HomePage> {
     return isDark ? base.withOpacity(0.3) : base.withOpacity(0.6);
   }
 
-  // --- WIDGET DA ENCICLOPÉDIA ---
+  // --- WIDGET DA ENCICLOPÉDIA E STATUS ---
   Widget _buildEnciclopedia(bool isDark) {
     bool tabelaCompleta = elementosDesbloqueados.length >= 118;
-
     if (etapaAtual == 2) {
       return Column(
         children: [
@@ -262,13 +338,18 @@ class HomePageState extends State<HomePage> {
             child: ListView.builder(
               itemCount: moleculasDesbloqueadas.length,
               itemBuilder: (context, index) {
-                String formula = moleculasDesbloqueadas[index];
+                String formula = moleculasDesbloqueadas[index]['formula'];
+                String descricao = moleculasDesbloqueadas[index]['descricao'];
+                bool temDescricao = descricao.isNotEmpty;
+
                 return Card(
                   margin: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 8,
                   ),
                   child: ListTile(
+                    onTap: () =>
+                        _editarDescricaoMolecula(index, isDark), // ABRE O POPUP
                     leading: CircleAvatar(
                       backgroundColor: isDark
                           ? Colors.grey[700]
@@ -285,8 +366,14 @@ class HomePageState extends State<HomePage> {
                         fontSize: 20,
                       ),
                     ),
-                    subtitle: const Text(
-                      "Fórmula estrutural sintetizada com sucesso.",
+                    subtitle: Text(
+                      temDescricao
+                          ? descricao
+                          : "Toque para adicionar suas anotações...",
+                    ),
+                    trailing: const Icon(
+                      Icons.edit_note,
+                      color: Colors.blueAccent,
                     ),
                   ),
                 );
@@ -296,7 +383,6 @@ class HomePageState extends State<HomePage> {
         ],
       );
     }
-
     return ListView.builder(
       itemCount: elementosDesbloqueados.length + (tabelaCompleta ? 1 : 0),
       itemBuilder: (context, index) {
@@ -332,12 +418,9 @@ class HomePageState extends State<HomePage> {
             ),
           );
         }
-
         int indiceElemento = tabelaCompleta ? index - 1 : index;
         int numElemento = elementosDesbloqueados[indiceElemento];
         var elemento = listaElementos[numElemento];
-        String molecula = principaisMoleculas[numElemento] ?? "Desconhecida";
-
         return Card(
           color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -354,7 +437,9 @@ class HomePageState extends State<HomePage> {
               ),
             ),
             title: Text("${elemento['numero']} - ${elemento['nome']}"),
-            subtitle: Text("Molécula: $molecula\nPeso: ${elemento['peso']}u"),
+            subtitle: Text(
+              "Molécula: ${principaisMoleculas[numElemento] ?? "Desconhecida"}\nPeso: ${elemento['peso']}u",
+            ),
             trailing: const Icon(Icons.info_outline),
           ),
         );
@@ -362,12 +447,9 @@ class HomePageState extends State<HomePage> {
     );
   }
 
-  // --- WIDGET DO STATUS (Tabela Periódica Geométrica) ---
   Widget _buildStatus() {
-    const double tamanhoCelula = 65.0;
-    const double espacamento = 4.0;
+    const double tamanhoCelula = 65.0, espacamento = 4.0;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-
     return InteractiveViewer(
       constrained: false,
       boundaryMargin: const EdgeInsets.all(60),
@@ -380,7 +462,6 @@ class HomePageState extends State<HomePage> {
             var elemento = listaElementos[index + 1];
             int numero = elemento['numero'];
             bool desbloqueado = elementosDesbloqueados.contains(numero);
-
             List<int> pos = _obterPosicaoTabela(numero);
             double leftPos = pos[0] * (tamanhoCelula + espacamento);
             double topPos =
@@ -399,16 +480,15 @@ class HomePageState extends State<HomePage> {
               height: tamanhoCelula,
               child: GestureDetector(
                 onTap: () {
-                  if (desbloqueado) {
+                  if (desbloqueado)
                     _mostrarDetalhesElemento(elemento, isDark);
-                  } else {
+                  else
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text("Descubra este elemento primeiro!"),
                         duration: Duration(seconds: 1),
                       ),
                     );
-                  }
                 },
                 child: Container(
                   decoration: BoxDecoration(
@@ -484,14 +564,15 @@ class HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    if (carregandoDb) {
+    if (carregandoDb)
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
 
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     game.isDark = isDark;
-    game.etapaAtual = etapaAtual; // Atualiza o jogo com a etapa
-    game.tipoLigacaoSelecionada = tipoLigacao; // Atualiza a ligação
+    game.etapaAtual = etapaAtual;
+    game.tipoLigacaoSelecionada = tipoLigacao;
+    game.modoFerramenta =
+        modoFerramenta; // Passa pro jogo se estamos em seleção
 
     final List<Widget> paginas = [
       _buildPaginaCraft(isDark, context),
@@ -519,7 +600,6 @@ class HomePageState extends State<HomePage> {
     );
   }
 
-  // --- HELPER DO BOTÃO DE LIGAÇÃO ---
   Widget _botaoLigacao(int valor, String texto, bool isDark) {
     bool selecionado = tipoLigacao == valor;
     return ChoiceChip(
@@ -540,10 +620,10 @@ class HomePageState extends State<HomePage> {
 
   // --- WIDGET DO CRAFT ---
   Widget _buildPaginaCraft(bool isDark, BuildContext context) {
-    void mostrarTutorialDialog(BuildContext context, bool isDark) {
+    void mostrarTutorialDialog() {
       showDialog(
         context: context,
-        builder: (BuildContext context) {
+        builder: (context) {
           return Dialog(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
@@ -556,31 +636,59 @@ class HomePageState extends State<HomePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Container(
-                        width: 45,
-                        height: 45,
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: isDark ? Colors.white : Colors.black,
-                            width: 1.5,
+                      Row(
+                        children: [
+                          Container(
+                            width: 45,
+                            height: 45,
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: isDark ? Colors.white : Colors.black,
+                                width: 1.5,
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: Icon(
+                              Icons.menu_book_rounded,
+                              color: isDark ? Colors.white : Colors.black,
+                              size: 28,
+                            ),
                           ),
-                        ),
-                        alignment: Alignment.center,
-                        child: Icon(
-                          Icons.menu_book_rounded,
-                          color: isDark ? Colors.white : Colors.black,
-                          size: 28,
-                        ),
+                          const SizedBox(width: 16),
+                          Text(
+                            "Como Jogar",
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 16),
-                      Text(
-                        "Como Jogar",
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : Colors.black,
+                      IconButton(
+                        icon: const Icon(
+                          Icons.info_outline,
+                          color: Colors.blueAccent,
                         ),
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text("O que é Nucleossíntese?"),
+                              content: const Text(
+                                "Nucleossíntese é o processo de criação de novos núcleos atômicos a partir de núcleos pré-existentes. Ocorre principalmente no interior das estrelas sob imensas pressões e temperaturas, fundindo elementos mais leves em mais pesados!",
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text("Entendi!"),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -588,10 +696,7 @@ class HomePageState extends State<HomePage> {
                   Divider(color: Colors.grey.withOpacity(0.3)),
                   const SizedBox(height: 16),
                   Text(
-                    "• Para fundir elementos arraste os para cima de outro.\n\n"
-                    "• Somente o hidrogênio tem estoque infinito.\n\n"
-                    "• Os elemntos desbloqueados poderão ser vistos nas abas Enciclopédia e Status la tera mais datalhes de cada elemento.\n\n"
-                    "• Na aba enciclopédia Haverá a opção de ir para a segunda etapa do jogo complete a tabela periódica e encontre a.",
+                    "• Para fundir elementos arraste os para cima de outro.\n\n• Somente o hidrogênio tem estoque infinito.\n\n• Os elemntos desbloqueados poderão ser vistos nas abas Enciclopédia e Status la tera mais datalhes de cada elemento.\n\n• Na aba enciclopédia Haverá a opção de ir para a segunda etapa do jogo complete a tabela periódica e encontre a.",
                     style: TextStyle(
                       fontSize: 15,
                       color: isDark ? Colors.white70 : Colors.black87,
@@ -629,24 +734,72 @@ class HomePageState extends State<HomePage> {
               Expanded(
                 child: Stack(
                   children: [
-                    // AQUI FICA A ÁREA DE DRAG AND DROP
                     DragTarget<int>(
-                      builder: (context, candidateData, rejectedData) {
-                        return GameWidget(game: game);
-                      },
+                      builder: (context, candidateData, rejectedData) =>
+                          GameWidget(game: game),
                       onAcceptWithDetails: (details) {
                         RenderBox renderBox =
                             context.findRenderObject() as RenderBox;
                         Offset localPosition = renderBox.globalToLocal(
                           details.offset,
                         );
-                        // Cria o átomo exatamente onde o dedo soltou!
                         game.spawnElement(
                           details.data,
                           posicao: Vector2(localPosition.dx, localPosition.dy),
                         );
                       },
                     ),
+
+                    if (modoFerramenta != 0)
+                      Positioned(
+                        top: 20,
+                        left: 0,
+                        right: 0,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.redAccent,
+                              ),
+                              onPressed: () {
+                                setState(() => modoFerramenta = 0);
+                                game.desmarcarTudo();
+                              },
+                              icon: const Icon(
+                                Icons.close,
+                                color: Colors.white,
+                              ),
+                              label: const Text(
+                                "Cancelar",
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                            const SizedBox(width: 20),
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: modoFerramenta == 1
+                                    ? Colors.red
+                                    : Colors.green,
+                              ),
+                              onPressed: () {
+                                game.confirmarAcao();
+                                setState(() => modoFerramenta = 0);
+                              },
+                              icon: const Icon(
+                                Icons.check,
+                                color: Colors.white,
+                              ),
+                              label: Text(
+                                modoFerramenta == 1
+                                    ? "Deletar Seleção"
+                                    : "Registrar Molécula",
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
 
                     Positioned(
                       bottom: 10,
@@ -672,7 +825,7 @@ class HomePageState extends State<HomePage> {
                               ),
                             ],
                           );
-                          if (res == 1) mostrarTutorialDialog(context, isDark);
+                          if (res == 1) mostrarTutorialDialog();
                           if (res == 2) widget.onThemeToggle();
                         },
                       ),
@@ -681,18 +834,30 @@ class HomePageState extends State<HomePage> {
                     Positioned(
                       top: 15,
                       left: 15,
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: Colors.red.withOpacity(0.5),
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(
+                            () => modoFerramenta = modoFerramenta == 1 ? 0 : 1,
+                          );
+                          if (modoFerramenta == 0) game.desmarcarTudo();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: modoFerramenta == 1
+                                ? Colors.red.withOpacity(0.2)
+                                : Colors.transparent,
+                            border: Border.all(
+                              color: Colors.red.withOpacity(0.5),
+                              width: modoFerramenta == 1 ? 3 : 1,
+                            ),
+                            shape: BoxShape.circle,
                           ),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.delete,
-                          color: Colors.redAccent,
-                          size: 28,
+                          child: const Icon(
+                            Icons.delete,
+                            color: Colors.redAccent,
+                            size: 28,
+                          ),
                         ),
                       ),
                     ),
@@ -700,7 +865,6 @@ class HomePageState extends State<HomePage> {
                 ),
               ),
 
-              // BARRA LATERAL DINÂMICA
               Container(
                 width: 85,
                 decoration: BoxDecoration(
@@ -717,7 +881,6 @@ class HomePageState extends State<HomePage> {
           ),
         ),
 
-        // SELETOR DE LIGAÇÕES (SÓ NA ETAPA 2) - Sem o botão de sintetizar!
         if (etapaAtual == 2)
           Container(
             height: 60,
@@ -728,6 +891,24 @@ class HomePageState extends State<HomePage> {
                 _botaoLigacao(1, "Simples (-)", isDark),
                 _botaoLigacao(2, "Dupla (=)", isDark),
                 _botaoLigacao(3, "Tripla (≡)", isDark),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: modoFerramenta == 2
+                        ? Colors.green[700]
+                        : Colors.green,
+                  ),
+                  onPressed: () {
+                    setState(
+                      () => modoFerramenta = modoFerramenta == 2 ? 0 : 2,
+                    );
+                    if (modoFerramenta == 0) game.desmarcarTudo();
+                  },
+                  icon: const Icon(Icons.search, color: Colors.white),
+                  label: const Text(
+                    "Registrar",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
               ],
             ),
           ),
@@ -735,7 +916,6 @@ class HomePageState extends State<HomePage> {
     );
   }
 
-  // --- BARRA LATERAL ETAPA 1 (Apenas Hidrogênio - Agora com Drag) ---
   Widget _barraLateralEtapa1(bool isDark) {
     return Column(
       children: [
@@ -835,14 +1015,12 @@ class HomePageState extends State<HomePage> {
     );
   }
 
-  // --- NOVA BARRA PARA A ETAPA 2 (TODOS OS ÁTOMOS - Com Drag) ---
   Widget _barraLateralEtapa2(bool isDark) {
     return ListView.builder(
       itemCount: listaElementos.length - 1,
       itemBuilder: (context, index) {
         var el = listaElementos[index + 1];
         bool podeUsar = elementosDesbloqueados.contains(el['numero']);
-
         return Opacity(
           opacity: podeUsar ? 1.0 : 0.3,
           child: Draggable<int>(

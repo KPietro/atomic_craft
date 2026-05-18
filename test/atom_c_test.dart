@@ -35,10 +35,16 @@ void main() {
         await DbHelper.instance.addMolecula("H₂O");
 
         // Aguardamos o Future de ler a lista atualizada
-        List<String> moleculas = await DbHelper.instance.getMoleculas();
+        List<Map<String, dynamic>> moleculas = await DbHelper.instance
+            .getMoleculas();
+
+        // Extraímos apenas as fórmulas para verificar
+        List<String> formulas = moleculas
+            .map((m) => m['formula'] as String)
+            .toList();
 
         // A lista final deve conter a molécula que acabamos de sintetizar
-        expect(moleculas, contains("H₂O"));
+        expect(formulas, contains("H₂O"));
       },
     );
   });

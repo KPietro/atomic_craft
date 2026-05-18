@@ -1,17 +1,24 @@
 import 'package:flame/game.dart';
+import 'package:flame/events.dart';
 import 'package:flutter/material.dart';
 import 'components/atomo_component.dart';
 import 'components/lixeira_component.dart';
 import 'components/ligacao_component.dart';
 import '../data/elementos_data.dart';
 
-class AtomCGame extends FlameGame with HasCollisionDetection {
+// --- MOTOR DO JOGO ---
+class AtomCGame extends FlameGame with HasCollisionDetection, DragCallbacks {
   bool isDark = false;
   int etapaAtual = 1;
   int tipoLigacaoSelecionada = 1;
+  int modoFerramenta =
+      0; // 0 = Normal, 1 = Lixeira(Vermelho), 2 = Registrar(Verde)
+
+  Vector2? inicioSelecao;
+  Vector2? fimSelecao;
 
   final Function(int) onUnlock;
-  final Function(String) onMoleculaCriada; // Novo: Avisa quando criar molécula!
+  final Function(String) onMoleculaCriada;
 
   AtomCGame({required this.onUnlock, required this.onMoleculaCriada});
 
@@ -23,25 +30,131 @@ class AtomCGame extends FlameGame with HasCollisionDetection {
     add(LixeiraComponent());
   }
 
-  // Novo spawn que permite dizer ONDE o átomo vai nascer (útil pro Drag and Drop)
   void spawnElement(int index, {Vector2? posicao}) {
     final atomo = AtomoComponent(listaElementos[index]);
     atomo.position = posicao ?? (size / 2);
     add(atomo);
   }
 
+  // --- LÓGICA DA CAIXA DE SELEÇÃO ESTILO WINDOWS ---
+  @override
+  void onDragStart(DragStartEvent event) {
+    super.onDragStart(event);
+    if (modoFerramenta != 0) {
+      inicioSelecao = event.localPosition.clone();
+      fimSelecao = event.localPosition.clone();
+    }
+  }
+
+  @override
+  void onDragUpdate(DragUpdateEvent event) {
+    super.onDragUpdate(event);
+    if (modoFerramenta != 0 && inicioSelecao != null && fimSelecao != null) {
+      fimSelecao!.add(event.localDelta);
+    }
+  }
+
+  @override
+  void onDragEnd(DragEndEvent event) {
+    super.onDragEnd(event);
+    if (modoFerramenta != 0 && inicioSelecao != null && fimSelecao != null) {
+      final rectSelecao = Rect.fromPoints(
+        inicioSelecao!.toOffset(),
+        fimSelecao!.toOffset(),
+      );
+
+      final atomos = children.query<AtomoComponent>();
+      for (var a in atomos) {
+        if (rectSelecao.overlaps(a.toAbsoluteRect())) {
+          a.selecionado = true;
+        }
+      }
+    }
+    inicioSelecao = null;
+    fimSelecao = null;
+  }
+
+  @override
+  void render(Canvas canvas) {
+    super.render(canvas);
+
+    if (modoFerramenta != 0 && inicioSelecao != null && fimSelecao != null) {
+      final paint = Paint()
+        ..color = (modoFerramenta == 1 ? Colors.red : Colors.green).withOpacity(
+          0.2,
+        )
+        ..style = PaintingStyle.fill;
+      final borderPaint = Paint()
+        ..color = modoFerramenta == 1 ? Colors.red : Colors.green
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0;
+
+      final rect = Rect.fromPoints(
+        inicioSelecao!.toOffset(),
+        fimSelecao!.toOffset(),
+      );
+      canvas.drawRect(rect, paint);
+      canvas.drawRect(rect, borderPaint);
+    }
+  }
+
+  // --- FUNÇÕES DE CONFIRMAÇÃO DAS FERRAMENTAS ---
+  void confirmarAcao() {
+    final selecionados = children
+        .query<AtomoComponent>()
+        .where((a) => a.selecionado)
+        .toList();
+    if (selecionados.isEmpty) return;
+
+    if (modoFerramenta == 1) {
+      // DELETAR VIA SELEÇÃO MULTIPLA
+      for (var atomo in selecionados) {
+        remove(atomo);
+        final ligacoes = children.query<LigacaoComponent>();
+        for (var lig in ligacoes) {
+          if (lig.atomoA == atomo || lig.atomoB == atomo) remove(lig);
+        }
+      }
+    } else if (modoFerramenta == 2) {
+      // REGISTRAR MOLÉCULA
+      Map<int, int> contagem = {};
+      for (var atomo in selecionados) {
+        int num = atomo.dados['numero'];
+        contagem[num] = (contagem[num] ?? 0) + 1;
+      }
+
+      String formula = gerarFormulaQuimica(contagem);
+      onMoleculaCriada(formula);
+
+      for (var atomo in selecionados) {
+        remove(atomo);
+        final ligacoes = children.query<LigacaoComponent>();
+        for (var lig in ligacoes) {
+          if (lig.atomoA == atomo || lig.atomoB == atomo) remove(lig);
+        }
+      }
+    }
+    desmarcarTudo();
+  }
+
+  void desmarcarTudo() {
+    final atomos = children.query<AtomoComponent>();
+    for (var a in atomos) {
+      a.selecionado = false;
+    }
+    modoFerramenta = 0;
+  }
+
   int contarLigacoesAtuais(AtomoComponent atomo) {
     int total = 0;
     final ligacoes = children.query<LigacaoComponent>();
     for (var ligacao in ligacoes) {
-      if (ligacao.atomoA == atomo || ligacao.atomoB == atomo) {
+      if (ligacao.atomoA == atomo || ligacao.atomoB == atomo)
         total += ligacao.tipoLigacao;
-      }
     }
     return total;
   }
 
-  // --- GERADOR DA FÓRMULA QUÍMICA ---
   String gerarFormulaQuimica(Map<int, int> contagemAtomos) {
     String formula = "";
     const subscritos = {
@@ -56,18 +169,16 @@ class AtomCGame extends FlameGame with HasCollisionDetection {
       '8': '₈',
       '9': '₉',
     };
-
     String numeroParaSubscrito(int num) {
       if (num <= 1) return "";
       return num.toString().split('').map((c) => subscritos[c]!).join('');
     }
 
     Map<String, int> contagemSimbolos = {};
-    contagemAtomos.forEach((num, qtd) {
-      contagemSimbolos[listaElementos[num]['simbolo']] = qtd;
-    });
+    contagemAtomos.forEach(
+      (num, qtd) => contagemSimbolos[listaElementos[num]['simbolo']] = qtd,
+    );
 
-    // Regra de Hill (C primeiro, H depois, resto alfabético)
     if (contagemSimbolos.containsKey('C')) {
       formula += "C${numeroParaSubscrito(contagemSimbolos['C']!)}";
       contagemSimbolos.remove('C');
@@ -76,49 +187,14 @@ class AtomCGame extends FlameGame with HasCollisionDetection {
         contagemSimbolos.remove('H');
       }
     }
-
     var letrasRestantes = contagemSimbolos.keys.toList()..sort();
-    for (var simb in letrasRestantes) {
+    for (var simb in letrasRestantes)
       formula += "$simb${numeroParaSubscrito(contagemSimbolos[simb]!)}";
-    }
     return formula;
   }
 
-  // --- VARREDURA DA MOLÉCULA ---
-  void _descobrirMolecula(AtomoComponent inicio) {
-    final visitados = <AtomoComponent>{};
-    final fila = <AtomoComponent>[inicio];
-
-    // Navega pelas linhas pra descobrir quem tá conectado com quem
-    while (fila.isNotEmpty) {
-      final atual = fila.removeAt(0);
-      if (!visitados.contains(atual)) {
-        visitados.add(atual);
-        final ligacoes = children.query<LigacaoComponent>();
-        for (var lig in ligacoes) {
-          if (lig.atomoA == atual && !visitados.contains(lig.atomoB))
-            fila.add(lig.atomoB);
-          else if (lig.atomoB == atual && !visitados.contains(lig.atomoA))
-            fila.add(lig.atomoA);
-        }
-      }
-    }
-
-    // Conta quantos átomos de cada tipo tem no desenho
-    Map<int, int> contagem = {};
-    for (var atomo in visitados) {
-      int numAtomico = atomo.dados['numero'];
-      contagem[numAtomico] = (contagem[numAtomico] ?? 0) + 1;
-    }
-
-    if (visitados.length > 1) {
-      // Tem que ter no mínimo 2 átomos interligados
-      String formula = gerarFormulaQuimica(contagem);
-      onMoleculaCriada(formula); // Manda pra página inicial!
-    }
-  }
-
   void verificarInteracao(AtomoComponent movido) {
+    // 1. PRIMEIRA MECÂNICA DA LIXEIRA: ARRASTAR ATÉ O CANTO SUPERIOR ESQUERDO
     final lixeiras = children.query<LixeiraComponent>();
     if (lixeiras.isNotEmpty) {
       if (movido.toAbsoluteRect().overlaps(lixeiras.first.toAbsoluteRect())) {
@@ -132,6 +208,7 @@ class AtomCGame extends FlameGame with HasCollisionDetection {
       }
     }
 
+    // 2. FUSÃO OU LIGAÇÕES ENTRE ÁTOMOS
     final outros = children.query<AtomoComponent>();
     for (var outro in outros) {
       if (outro == movido) continue;
@@ -154,26 +231,40 @@ class AtomCGame extends FlameGame with HasCollisionDetection {
           );
 
           if (!jaLigados) {
-            int numeroA = movido.dados['numero'];
-            int numeroB = outro.dados['numero'];
+            int numA = movido.dados['numero'];
+            int numB = outro.dados['numero'];
 
-            int valMaxA = valenciasMaximas[numeroA] ?? 8;
-            int valMaxB = valenciasMaximas[numeroB] ?? 8;
+            var regraA = regrasQuimicas[numA];
+            var regraB = regrasQuimicas[numB];
 
-            if (contarLigacoesAtuais(movido) + tipoLigacaoSelecionada <=
+            int valMaxA = regraA != null ? regraA['max'] : 8;
+            int valMaxB = regraB != null ? regraB['max'] : 8;
+
+            bool bloqueiaMultiplaA = regraA != null
+                ? regraA['bloqueiaMultipla']
+                : false;
+            bool bloqueiaMultiplaB = regraB != null
+                ? regraB['bloqueiaMultipla']
+                : false;
+
+            // REGRA 1: Bloqueia dupla/tripla em átomos que não suportam (ex: Hidrogênio, Flúor)
+            if (tipoLigacaoSelecionada > 1 &&
+                (bloqueiaMultiplaA || bloqueiaMultiplaB)) {
+              print(
+                "Ligação negada: Um dos átomos não suporta ligações múltiplas.",
+              );
+            }
+            // REGRA 2: Verifica se a ligação estoura a valência máxima do átomo
+            else if (contarLigacoesAtuais(movido) + tipoLigacaoSelecionada <=
                     valMaxA &&
                 contarLigacoesAtuais(outro) + tipoLigacaoSelecionada <=
                     valMaxB) {
-              // Cria a linha!
               add(LigacaoComponent(movido, outro, tipoLigacaoSelecionada));
-
-              // Faz a varredura pra ler a molécula
-              _descobrirMolecula(movido);
+            } else {
+              print("Ligação negada: Excedeu o limite máximo de ligações.");
             }
           }
-          // Afasta os quadrados pra não colar
-          movido.position.x -= 35;
-          movido.position.y -= 35;
+
           break;
         }
       }
