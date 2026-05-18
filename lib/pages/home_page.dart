@@ -242,7 +242,7 @@ class HomePageState extends State<HomePage> {
   Widget _buildEnciclopedia(bool isDark) {
     bool tabelaCompleta = elementosDesbloqueados.length >= 118;
 
-    /*if (etapaAtual == 2) {
+    if (etapaAtual == 2) {
       return Column(
         children: [
           Card(
@@ -295,7 +295,7 @@ class HomePageState extends State<HomePage> {
           ),
         ],
       );
-    }*/
+    }
 
     return ListView.builder(
       itemCount: elementosDesbloqueados.length + (tabelaCompleta ? 1 : 0),
@@ -312,7 +312,7 @@ class HomePageState extends State<HomePage> {
                 width: 1.5,
               ),
             ),
-            /*child: ListTile(
+            child: ListTile(
               onTap: () => setState(() => etapaAtual = 2),
               leading: CircleAvatar(
                 backgroundColor: Colors.orangeAccent,
@@ -329,7 +329,7 @@ class HomePageState extends State<HomePage> {
                 "O núcleo está pronto. Toque para transcender.",
               ),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            ),*/
+            ),
           );
         }
 
@@ -590,8 +590,8 @@ class HomePageState extends State<HomePage> {
                   Text(
                     "• Para fundir elementos arraste os para cima de outro.\n\n"
                     "• Somente o hidrogênio tem estoque infinito.\n\n"
-                    "• Os elemntos desbloqueados poderão ser vistos nas abas Enciclopédia e Status la tera mais datalhes de cada elemento.\n\n",
-                    /*"• Na aba enciclopédia Haverá a opção de ir para a segunda etapa do jogo complete a tabela periódica e encontre a."*/
+                    "• Os elemntos desbloqueados poderão ser vistos nas abas Enciclopédia e Status la tera mais datalhes de cada elemento.\n\n"
+                    "• Na aba enciclopédia Haverá a opção de ir para a segunda etapa do jogo complete a tabela periódica e encontre a.",
                     style: TextStyle(
                       fontSize: 15,
                       color: isDark ? Colors.white70 : Colors.black87,
@@ -718,7 +718,7 @@ class HomePageState extends State<HomePage> {
         ),
 
         // SELETOR DE LIGAÇÕES (SÓ NA ETAPA 2) - Sem o botão de sintetizar!
-        /*if (etapaAtual == 2)
+        if (etapaAtual == 2)
           Container(
             height: 60,
             color: isDark ? const Color(0xFF1E1325) : const Color(0xFFE6FFE7),
@@ -730,7 +730,7 @@ class HomePageState extends State<HomePage> {
                 _botaoLigacao(3, "Tripla (≡)", isDark),
               ],
             ),
-          ),*/
+          ),
       ],
     );
   }
