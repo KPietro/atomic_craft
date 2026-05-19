@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flame/game.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // LOGIN
+import 'package:cloud_firestore/cloud_firestore.dart'; // BANCO DE DADOS EXTERNO
 import '../game/atom_game.dart';
 import '../data/elementos_data.dart';
 import '../data/db_helper.dart';
@@ -21,7 +23,6 @@ class HomePageState extends State<HomePage> {
   late AtomCGame game;
 
   List<int> elementosDesbloqueados = [];
-  // Agora é uma lista de Dicionários (Maps) para guardar a fórmula e a descrição
   List<Map<String, dynamic>> moleculasDesbloqueadas = [];
   bool carregandoDb = true;
 
@@ -35,9 +36,20 @@ class HomePageState extends State<HomePage> {
         if (!elementosDesbloqueados.contains(novoNumero)) {
           setState(() => elementosDesbloqueados.add(novoNumero));
           await DbHelper.instance.addDesbloqueado(novoNumero);
+
+          // SALVAMENTO NA NUVEM: Átomos
+          final user = FirebaseAuth.instance.currentUser;
+          if (user != null) {
+            FirebaseFirestore.instance
+                .collection('usuarios')
+                .doc(user.uid)
+                .collection('desbloqueados')
+                .doc(novoNumero.toString())
+                .set({'numero': novoNumero});
+          }
         }
       },
-      onMoleculaCriada: (formula) async {
+      onMoleculaCriada: (formula, estrutura) async {
         bool jaExiste = moleculasDesbloqueadas.any(
           (m) => m['formula'] == formula,
         );
@@ -46,9 +58,26 @@ class HomePageState extends State<HomePage> {
             () => moleculasDesbloqueadas.add({
               'formula': formula,
               'descricao': '',
+              'estrutura': estrutura,
             }),
           );
-          await DbHelper.instance.addMolecula(formula);
+          await DbHelper.instance.addMolecula(formula, estrutura);
+
+          // SALVAMENTO NA NUVEM: Moléculas e Estruturas
+          final user = FirebaseAuth.instance.currentUser;
+          if (user != null) {
+            FirebaseFirestore.instance
+                .collection('usuarios')
+                .doc(user.uid)
+                .collection('moleculas')
+                .doc(formula)
+                .set({
+                  'formula': formula,
+                  'descricao': '',
+                  'estrutura': estrutura,
+                });
+          }
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text("Nova fórmula sintetizada: $formula"),
@@ -63,8 +92,7 @@ class HomePageState extends State<HomePage> {
 
   Future<void> _carregarProgresso() async {
     final salvos = await DbHelper.instance.getDesbloqueados();
-    final molsSalvas = await DbHelper.instance
-        .getMoleculas(); // Pega a lista com as descrições
+    final molsSalvas = await DbHelper.instance.getMoleculas();
     setState(() {
       elementosDesbloqueados = salvos;
       moleculasDesbloqueadas = molsSalvas;
@@ -72,7 +100,189 @@ class HomePageState extends State<HomePage> {
     });
   }
 
-  // --- NOVO: POP-UP DE ANOTAÇÃO DA MOLÉCULA ---
+  // --- MÓDULO DE LOGIN OPCIONAL ---
+  void _mostrarDialogLogin(bool isDark) {
+    final user = FirebaseAuth.instance.currentUser;
+
+    // Se já estiver logado, mostra opção de sair
+    if (user != null) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+          title: Text(
+            "Conta na Nuvem",
+            style: TextStyle(color: isDark ? Colors.white : Colors.black),
+          ),
+          content: Text(
+            "Você está logado como:\n${user.email}",
+            style: TextStyle(color: isDark ? Colors.white : Colors.black),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Fechar"),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+              ),
+              onPressed: () async {
+                await FirebaseAuth.instance.signOut();
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Desconectado da Nuvem."),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+              },
+              child: const Text(
+                "Sair da Conta",
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    // Se não estiver logado, mostra o formulário
+    TextEditingController emailCtrl = TextEditingController();
+    TextEditingController senhaCtrl = TextEditingController();
+    bool isLogin = true;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+              title: Row(
+                children: [
+                  const Icon(Icons.cloud_sync, color: Colors.blueAccent),
+                  const SizedBox(width: 10),
+                  Text(
+                    isLogin ? "Entrar na Nuvem" : "Criar Conta",
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: emailCtrl,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: "E-mail",
+                      labelStyle: TextStyle(
+                        color: isDark ? Colors.white54 : Colors.black54,
+                      ),
+                    ),
+                  ),
+                  TextField(
+                    controller: senhaCtrl,
+                    obscureText: true,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: "Senha",
+                      labelStyle: TextStyle(
+                        color: isDark ? Colors.white54 : Colors.black54,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextButton(
+                    onPressed: () {
+                      setDialogState(() {
+                        isLogin = !isLogin;
+                      });
+                    },
+                    child: Text(
+                      isLogin
+                          ? "Não tem conta? Crie uma!"
+                          : "Já tem conta? Faça Login",
+                      style: const TextStyle(color: Colors.orangeAccent),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    "Cancelar",
+                    style: TextStyle(color: Colors.redAccent),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blueAccent,
+                  ),
+                  onPressed: () async {
+                    try {
+                      if (isLogin) {
+                        await FirebaseAuth.instance.signInWithEmailAndPassword(
+                          email: emailCtrl.text.trim(),
+                          password: senhaCtrl.text.trim(),
+                        );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              "Login feito com sucesso! Sincronizando...",
+                            ),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      } else {
+                        await FirebaseAuth.instance
+                            .createUserWithEmailAndPassword(
+                              email: emailCtrl.text.trim(),
+                              password: senhaCtrl.text.trim(),
+                            );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              "Conta criada! Sincronização ativada.",
+                            ),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
+                      Navigator.pop(context);
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            "Erro: A senha precisa ter 6 digitos ou e-mail inválido.",
+                          ),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  },
+                  child: Text(
+                    isLogin ? "Entrar" : "Registrar",
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _editarDescricaoMolecula(int index, bool isDark) {
     String formula = moleculasDesbloqueadas[index]['formula'];
     TextEditingController controller = TextEditingController(
@@ -129,6 +339,18 @@ class HomePageState extends State<HomePage> {
                 setState(() {
                   moleculasDesbloqueadas[index]['descricao'] = novaDesc;
                 });
+
+                // ATUALIZA NA NUVEM TAMBÉM SE ESTIVER LOGADO
+                final user = FirebaseAuth.instance.currentUser;
+                if (user != null) {
+                  FirebaseFirestore.instance
+                      .collection('usuarios')
+                      .doc(user.uid)
+                      .collection('moleculas')
+                      .doc(formula)
+                      .update({'descricao': novaDesc});
+                }
+
                 Navigator.pop(context);
               },
               child: const Text(
@@ -142,7 +364,6 @@ class HomePageState extends State<HomePage> {
     );
   }
 
-  // --- FUNÇÃO PARA MOSTRAR DETALHES DO ELEMENTO ---
   void _mostrarDetalhesElemento(Map<String, dynamic> elemento, bool isDark) {
     showDialog(
       context: context,
@@ -315,7 +536,6 @@ class HomePageState extends State<HomePage> {
     return isDark ? base.withOpacity(0.3) : base.withOpacity(0.6);
   }
 
-  // --- WIDGET DA ENCICLOPÉDIA E STATUS ---
   Widget _buildEnciclopedia(bool isDark) {
     bool tabelaCompleta = elementosDesbloqueados.length >= 118;
     if (etapaAtual == 2) {
@@ -325,7 +545,10 @@ class HomePageState extends State<HomePage> {
             color: Colors.blueAccent.withOpacity(0.2),
             margin: const EdgeInsets.all(16),
             child: ListTile(
-              onTap: () => setState(() => etapaAtual = 1),
+              onTap: () {
+                setState(() => etapaAtual = 1);
+                game.limparQuadro();
+              },
               leading: const Icon(Icons.arrow_back),
               title: const Text(
                 "VOLTAR PARA ETAPA 1",
@@ -340,6 +563,8 @@ class HomePageState extends State<HomePage> {
               itemBuilder: (context, index) {
                 String formula = moleculasDesbloqueadas[index]['formula'];
                 String descricao = moleculasDesbloqueadas[index]['descricao'];
+                String estrutura =
+                    moleculasDesbloqueadas[index]['estrutura'] ?? '';
                 bool temDescricao = descricao.isNotEmpty;
 
                 return Card(
@@ -348,8 +573,6 @@ class HomePageState extends State<HomePage> {
                     vertical: 8,
                   ),
                   child: ListTile(
-                    onTap: () =>
-                        _editarDescricaoMolecula(index, isDark), // ABRE O POPUP
                     leading: CircleAvatar(
                       backgroundColor: isDark
                           ? Colors.grey[700]
@@ -359,21 +582,68 @@ class HomePageState extends State<HomePage> {
                         style: TextStyle(color: Colors.white),
                       ),
                     ),
-                    title: Text(
-                      formula,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                      ),
+                    title: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          formula,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.edit_note,
+                            color: Colors.blueAccent,
+                          ),
+                          onPressed: () =>
+                              _editarDescricaoMolecula(index, isDark),
+                        ),
+                      ],
                     ),
-                    subtitle: Text(
-                      temDescricao
-                          ? descricao
-                          : "Toque para adicionar suas anotações...",
-                    ),
-                    trailing: const Icon(
-                      Icons.edit_note,
-                      color: Colors.blueAccent,
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          temDescricao
+                              ? descricao
+                              : "Toque no ícone de bloco ao lado para adicionar suas anotações...",
+                        ),
+                        const SizedBox(height: 10),
+                        if (estrutura.isNotEmpty)
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blueAccent,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                indiceAtual = 0;
+                                etapaAtual = 2;
+                              });
+                              game.carregarMolecula(estrutura);
+                            },
+                            icon: const Icon(
+                              Icons.science,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                            label: const Text(
+                              "Carregar no Craft",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 );
@@ -399,7 +669,10 @@ class HomePageState extends State<HomePage> {
               ),
             ),
             child: ListTile(
-              onTap: () => setState(() => etapaAtual = 2),
+              onTap: () {
+                setState(() => etapaAtual = 2);
+                game.limparQuadro();
+              },
               leading: CircleAvatar(
                 backgroundColor: Colors.orangeAccent,
                 child: Icon(
@@ -517,38 +790,41 @@ class HomePageState extends State<HomePage> {
                         ),
                       ),
                       Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const SizedBox(height: 6),
-                            Text(
-                              elemento['simbolo'],
-                              style: TextStyle(
-                                color: desbloqueado
-                                    ? (isDark ? Colors.white : Colors.black)
-                                    : Colors.black12,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            if (desbloqueado) ...[
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const SizedBox(height: 6),
                               Text(
-                                elemento['nome'],
+                                elemento['simbolo'],
                                 style: TextStyle(
-                                  color: isDark ? Colors.white : Colors.black,
-                                  fontSize: 8,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              Text(
-                                "${elemento['peso']}u",
-                                style: TextStyle(
-                                  color: isDark ? Colors.white : Colors.black,
-                                  fontSize: 8,
+                                  color: desbloqueado
+                                      ? (isDark ? Colors.white : Colors.black)
+                                      : Colors.black12,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
+                              if (desbloqueado) ...[
+                                Text(
+                                  elemento['nome'],
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white : Colors.black,
+                                    fontSize: 8,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  "${elemento['peso']}u",
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white : Colors.black,
+                                    fontSize: 8,
+                                  ),
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
                       ),
                     ],
@@ -571,8 +847,7 @@ class HomePageState extends State<HomePage> {
     game.isDark = isDark;
     game.etapaAtual = etapaAtual;
     game.tipoLigacaoSelecionada = tipoLigacao;
-    game.modoFerramenta =
-        modoFerramenta; // Passa pro jogo se estamos em seleção
+    game.modoFerramenta = modoFerramenta;
 
     final List<Widget> paginas = [
       _buildPaginaCraft(isDark, context),
@@ -618,7 +893,6 @@ class HomePageState extends State<HomePage> {
     );
   }
 
-  // --- WIDGET DO CRAFT ---
   Widget _buildPaginaCraft(bool isDark, BuildContext context) {
     void mostrarTutorialDialog() {
       showDialog(
@@ -823,10 +1097,18 @@ class HomePageState extends State<HomePage> {
                                 value: 2,
                                 child: Text("Modo Escuro"),
                               ),
+                              PopupMenuItem(
+                                value: 3,
+                                child: Text("Conta na Nuvem"),
+                              ), // NOVO BOTÃO AQUI!
                             ],
                           );
                           if (res == 1) mostrarTutorialDialog();
                           if (res == 2) widget.onThemeToggle();
+                          if (res == 3)
+                            _mostrarDialogLogin(
+                              isDark,
+                            ); // CHAMA A TELA DE LOGIN
                         },
                       ),
                     ),

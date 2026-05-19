@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "546091785201",
+    "project_id": "atomic-craft",
+    "storage_bucket": "atomic-craft.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:546091785201:android:293421433a38f1061c4250",
+        "android_client_info": {
+          "package_name": "com.example.atomic_craft"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAyn4psb-9BtsE3wtLTW8DFyVBWG54MQwU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

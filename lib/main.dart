@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
-import 'data/elementos_data.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'pages/home_page.dart';
+import 'data/elementos_data.dart'; // Importação do arquivo de dados para carregar o JSON
 
-// --- APP ---
 void main() async {
+  // Garante que o Flutter e os plugins nativos (como o Firebase) estejam prontos antes de iniciar
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Chama a função que carrega os seus dois JSONs (elementos e moleculas)
+  // Inicializa o Firebase com as configurações do google-services.json
+  await Firebase.initializeApp();
+
+  // Carrega os elementos usando o nome exato da função do seu elementos_data.dart!
   await carregarDados();
 
   runApp(const MyApp());
@@ -14,24 +18,29 @@ void main() async {
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
   @override
-  State<MyApp> createState() => MyAppState();
+  State<MyApp> createState() => _MyAppState();
 }
 
-class MyAppState extends State<MyApp> {
-  bool escu = false;
-  void toggleTema() => setState(() => escu = !escu);
+class _MyAppState extends State<MyApp> {
+  bool isDarkMode = true;
+
+  // Função para alternar o tema do app entre Claro e Escuro
+  void toggleTheme() {
+    setState(() {
+      isDarkMode = !isDarkMode;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      theme: ThemeData.light(),
-      darkTheme: ThemeData.dark(),
-      themeMode: escu ? ThemeMode.dark : ThemeMode.light,
-
-      // Passando a HomePage sem o underline
-      home: HomePage(onThemeToggle: toggleTema),
       debugShowCheckedModeBanner: false,
+      title: 'Atomic Craft',
+      // Alterna dinamicamente as cores de acordo com o estado do tema
+      theme: isDarkMode ? ThemeData.dark() : ThemeData.light(),
+      home: HomePage(onThemeToggle: toggleTheme),
     );
   }
 }

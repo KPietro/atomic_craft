@@ -26,11 +26,12 @@ class DbHelper {
     )
     ''');
 
-    // AQUI: Adicionamos a coluna "descricao"
+    // AQUI: Adicionamos a coluna "estrutura" para salvar o JSON da geometria da molécula
     await db.execute('''
     CREATE TABLE moleculas_desbloqueadas (
       formula TEXT PRIMARY KEY,
-      descricao TEXT
+      descricao TEXT,
+      estrutura TEXT
     )
     ''');
 
@@ -52,12 +53,13 @@ class DbHelper {
     return result.map((json) => json['numero'] as int).toList();
   }
 
-  // --- FUNÇÕES DE MOLÉCULAS COM DESCRIÇÃO ---
-  Future<void> addMolecula(String formula) async {
+  // --- FUNÇÕES DE MOLÉCULAS COM LAYOUT E DESCRIÇÃO ---
+  Future<void> addMolecula(String formula, String estrutura) async {
     final db = await instance.database;
     await db.insert('moleculas_desbloqueadas', {
       'formula': formula,
-      'descricao': '', // Nasce vazia
+      'descricao': '',
+      'estrutura': estrutura, // Salva o esqueleto geométrico
     }, conflictAlgorithm: ConflictAlgorithm.ignore);
   }
 
@@ -74,11 +76,9 @@ class DbHelper {
     );
   }
 
-  // Agora retorna um Map inteiro (com formula e descricao) em vez de só uma String
   Future<List<Map<String, dynamic>>> getMoleculas() async {
     final db = await instance.database;
     final result = await db.query('moleculas_desbloqueadas');
-    // Transforma num formato que podemos editar na memória do app
     return result.map((e) => Map<String, dynamic>.from(e)).toList();
   }
 }
